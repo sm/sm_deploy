@@ -1,0 +1,286 @@
+#!/usr/bin/env bash
+
+hook()
+{
+  hook="$1"
+
+  if (( hooks_flag == 1 ))
+  then # Only process hooks if the flag is not explicitely set to 0.
+    # System
+    if file_is_nonempty "$shared_path/deploy/$hook"
+    then
+      ( source_files "$shared_path/deploy/$hook" )
+    fi
+
+    # System, Environment specific
+    if variable_is_nonempty environment &&
+       file_is_executable "$shared_path/deploy/#{$environment}/$hook"
+    then
+      ( source "$shared_path/deploy/#{$environment}/$hook" )
+    fi
+
+    # Project
+    if path_exists "$shared_path/$project" &&
+       file_is_executable "$shared_path/$project/config/deploy/$hook"
+    then
+      ( source "$shared_path/$project/config/deploy/$hook" )
+    fi
+
+    # Project, Environment specific
+    if variable_is_nonempty environment &&
+      file_is_executable "$shared_path/$project/config/deploy/$environment/$hook"
+    then
+      ( source "$shared_path/$project/config/deploy/$environment/$hook" )
+    fi
+  fi
+}
+
+before_step()
+{
+  local name="$1"
+  shift
+  hook "before_${name}" "$@"
+}
+
+after_step()
+{
+  local name="$1"
+  shift
+  hook "after_${name}" "$@"
+}
+
+update()
+{
+  update_repository && replace_current
+}
+
+update_repository()
+{
+  #log "Updating local repository in $shared_path/$project."
+
+  : ${scm_path:="$shared_path/scm"}
+  fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
+
+  enter "${shared_path}/${project}"
+
+  log_todo "move revision handling to fetch_uri"
+
+  case "${scm_type}" in
+    git|github)
+      if file_exists ".gitmodules"
+      then
+        log "Updating submodules."
+        git submodule init 2>/dev/null
+        git submodule update
+      fi
+
+      if [[ -n "$revision" ]]
+      then
+        log "Checking out revision '$revision'."
+        git checkout $revision >/dev/null 2>&1
+      fi
+
+      ;;
+
+    hg)
+      if [[ -n "$revision" ]]
+      then
+        # TODO: Find out if this is how it's done for hg ;)
+        log "Checking out revision '$revision'."
+        hg update $branch $revision
+      else
+        log "Updating branch '$branch'."
+        hg update $branch
+      fi
+      ;;
+
+    svn)
+      if (( revision > 0 ))
+      then
+        log "Checking out revision $revision"
+        svn checkout -r $revision
+      fi
+      ;;
+
+  esac
+}
+
+stage_current()
+{
+  log "Staging new release to ${stage_path}"
+  rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
+  ensure_paths_exist "$stage_path/public"
+}
+
+fail_stage_current()
+{
+  log "Removing release from $stage_path"
+  if path_exists "${stage_path}"
+  then
+    remove_paths "${stage_path}"
+  fi
+}
+
+replace_current()
+{
+  if path_exists "$release_path"
+  then
+    log "Moving aside previous release."
+    mv "$release_path" "$project_path/previous/$timestamp"
+  fi
+
+  log "Replacing $release_path from $stage_path"
+  mv "$stage_path" "$release_path"
+}
+
+fail_replace_current()
+{
+  log_todo "should \$previous == \$timestamp ?"
+  if path_exists "$previous"
+  then
+    log "Discarding current release to $discard_path/$timestamp ..."
+    mv "$release_path" "$discard_path/$timestamp"
+
+    log "Rolling back to previous release $previous ..."
+    mv "$previous" "${release_path%/}"
+
+    log "revert complete."
+  else
+    log "No previous releases to revert to."
+  fi
+}
+
+configure()
+{
+  if ! path_exists "$shared_path/config"
+  then
+    log "No shared config path found, skipping shared configuration."
+    return 0
+  fi
+
+  local item config_item
+
+  ensure_paths_exist "$stage_path/config"
+
+  enter "${shared_path}/config"
+
+  log "Setting up persistent config files:"
+  for config_item in "$shared_path"/config/*
+  do
+    item="${config_item##*/}"
+    log "  - $item"
+    link --force "$shared_path/config/$item" "$stage_path/config/$item"
+  done
+}
+
+symlink()
+{
+  log "Setting up persistent directories:"
+
+  for dir in tmp log pids files
+  do
+    log "  - $dir"
+    remove_paths "${stage_path}/${dir}"
+    link --force "${shared_path}/${dir}" to "${stage_path}/${dir}"
+  done
+
+  if ! path_exists "$shared_path/public/"
+  then
+    error "\nPlease first run:\n\n  bdsm rails setup \n\nand repeat:\n\n  bdsm deploy\n"
+  fi
+  for dir in $(ls -A "$shared_path/public/")
+  do
+    log "  - public/$dir"
+    remove_paths "${stage_path}/public/${dir}"
+    link --force "${shared_path}/public/${dir}" to "${stage_path}/public/${dir}"
+  done
+}
+
+cleanup()
+{
+  if path_exists "$project_path/previous"
+  then
+    log "Removing old releases: ${old_releases[@]}"
+    enter "${project_path}/previous"
+
+    if array_is_nonempty old_releases
+    then
+      if ! remove_paths "${old_releases[@]}"
+      then
+        log "There was an error removing the old releases."
+      fi
+    fi
+  fi
+}
+
+record()
+{ # TODO: What else could we record that would be useful?
+  if path_exists "${release_path}"
+  then
+    revision=$(
+    builtin cd "${shared_path}/${project}"
+    git log --no-color -1 | awk '/commit/{print $2}'
+    )
+
+    branch=$(
+    builtin cd "${shared_path}/${project}"
+    git branch --no-color | awk '/^\* /{print $2}'
+    )
+
+    write "$revision"       to "$release_path/revision"
+    write "$branch"         to "$release_path/branch"
+    write "$repository_url" to "$release_path/repository_url"
+  fi
+}
+
+run_deploy()
+{
+  trap trace_filter RETURN
+  trace_filter deploy
+
+  # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
+  export log_file="$deploy_log_path/$timestamp.log"
+  exec 3>>"$log_file"
+  exec &> >(tee -a "$log_file")
+  # Error handling
+  trap revert_on_error ERR
+
+  # This will run any deploy hooks that are called
+  #   (by hook file name)
+  # Hooks are sourced into a subshell IF they are executable.
+  # This means that users may disable hooks by changing their
+  # execute bit.
+  #
+
+  if ! command_exists rsync
+  then
+    error "The 'rsync' command was not found, please install rsync before using"\
+      "deploy. (Note that there is an rsync bdsm extension, which you can install"\
+      "root# bdsm rsync package install"
+  fi
+
+  step deploy
+
+  log "Deploy started at $timestamp and completed at $(date +%m.%d.%YT%H:%M:%S)"
+}
+
+deploy()
+{
+  steps "${deploy_steps[@]}"
+}
+
+revert_on_error()
+{
+  local status=$?
+  backtrace "A command has returned an not handled error code (${status})." no_exit 2>&3
+  log "\nAn error occured, reverting...\n  for details check deploy.$timestamp.log\n" >&2
+  retreat >&2
+  kill -s USR2 $APP_PID #to exit application not current subshell
+}
+
+revert()
+{
+  log "revert ..."
+  retreat "deploy" "${deploy_steps[@]}"
+}
+
