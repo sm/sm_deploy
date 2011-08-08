@@ -168,8 +168,9 @@ configure()
   for config_item in "$shared_path"/config/*
   do
     item="${config_item##*/}"
-    log "  - $item"
+    log_step "${item}"
     link --force "$shared_path/config/$item" "$stage_path/config/$item"
+    log_step "${item}" success
   done
 }
 
@@ -179,9 +180,10 @@ symlink()
 
   for dir in tmp log pids files
   do
-    log "  - $dir"
+    log_step "${dir}"
     remove_paths "${stage_path}/${dir}"
     link --force "${shared_path}/${dir}" to "${stage_path}/${dir}"
+    log_step "${dir}" success
   done
 
   if ! path_exists "$shared_path/public/"
@@ -190,9 +192,10 @@ symlink()
   fi
   for dir in $(ls -A "$shared_path/public/")
   do
-    log "  - public/$dir"
+    log_step "public/${dir}"
     remove_paths "${stage_path}/public/${dir}"
     link --force "${shared_path}/public/${dir}" to "${stage_path}/public/${dir}"
+    log_step "public/${dir}" success
   done
 }
 
