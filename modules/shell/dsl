@@ -2,51 +2,60 @@
 
 hook()
 {
-  hook="$1"
+  _hook="$1"
 
-  if (( hooks_flag == 1 ))
-  then # Only process hooks if the flag is not explicitely set to 0.
-    # System
-    if file_is_nonempty "$shared_path/deploy/$hook"
-    then
-      ( source_files "$shared_path/deploy/$hook" )
-    fi
+  (( _hooks_flag != 0 )) || return 0
 
-    # System, Environment specific
-    if variable_is_nonempty environment &&
-       file_is_executable "$shared_path/deploy/#{$environment}/$hook"
-    then
-      ( source "$shared_path/deploy/#{$environment}/$hook" )
-    fi
-
-    # Project
-    if path_exists "$shared_path/$project" &&
-       file_is_executable "$shared_path/$project/config/deploy/$hook"
-    then
-      ( source "$shared_path/$project/config/deploy/$hook" )
-    fi
-
-    # Project, Environment specific
-    if variable_is_nonempty environment &&
-      file_is_executable "$shared_path/$project/config/deploy/$environment/$hook"
-    then
-      ( source "$shared_path/$project/config/deploy/$environment/$hook" )
-    fi
+  # System
+  if file_is_nonempty "$shared_path/deploy/$_hook"
+  then
+    log_step "shared path ~ ${_hook}" \
+      hook_source "$shared_path/deploy/$_hook"
   fi
+
+  # System, Environment specific
+  if variable_is_nonempty environment &&
+    file_is_executable "$shared_path/deploy/#{$environment}/${_hook}"
+  then
+    log_step "shared ${environment} path ~ ${_hook}" \
+      hook_source "$shared_path/deploy/#{$environment}/${_hook}"
+  fi
+
+  # Project
+  if path_exists "$shared_path/$project" &&
+    file_is_executable "$shared_path/$project/config/deploy/${_hook}"
+  then
+    log_step "${project} ~ ${_hook}" \
+      hook_source "$shared_path/$project/config/deploy/${_hook}"
+  fi
+
+  # Project, environment
+  if variable_is_nonempty environment &&
+    file_is_executable "$shared_path/$project/config/deploy/$environment/${_hook}"
+  then
+    log_step "${project} ${environment} ~ ${_hook}" \
+      hook_source "$shared_path/$project/config/deploy/$environment/${_hook}"
+  fi
+}
+
+hook_source()
+{
+  _file="$1"
+  ( source_files "${_file}")
 }
 
 before_step()
 {
-  local name="$1"
+  local _name="$1"
   shift
-  hook "before_${name}" "$@"
+  hook "before_${_name}" "$@"
 }
 
 after_step()
 {
-  local name="$1"
+  local _name="$1"
   shift
-  hook "after_${name}" "$@"
+  hook "after_${_name}" "$@"
 }
 
 update()
@@ -58,12 +67,13 @@ update_repository()
 {
   #log "Updating local repository in $shared_path/$project."
 
-  : ${scm_path:="$shared_path/scm"}
+  #: ${scm_path:="$shared_path/scm"} # Sanity checking
+
   fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
 
   enter "${shared_path}/${project}"
 
-  log_todo "move revision handling to fetch_uri"
+  log_todo "**** move revision handling to fetch_uri"
 
   case "${scm_type}" in
     git|github)
@@ -74,12 +84,9 @@ update_repository()
         git submodule update
       fi
 
-      if [[ -n "$revision" ]]
-      then
-        log "Checking out revision '$revision'."
-        git checkout $revision >/dev/null 2>&1
-      fi
-
+      [[ -n "$revision" ]] || return 0
+      log "Checking out revision '$revision'."
+      git checkout $revision >/dev/null 2>&1
       ;;
 
     hg)
@@ -95,11 +102,10 @@ update_repository()
       ;;
 
     svn)
-      if (( revision > 0 ))
-      then
-        log "Checking out revision $revision"
-        svn checkout -r $revision
-      fi
+      (( revision > 0 )) || return 0
+
+      log "Checking out revision $revision"
+      svn checkout -r $revision
       ;;
 
   esac
@@ -168,9 +174,8 @@ configure()
   for config_item in "$shared_path"/config/*
   do
     item="${config_item##*/}"
-    log_step "${item}"
-    link --force "$shared_path/config/$item" "$stage_path/config/$item"
-    log_step success
+    log_step "${item}" \
+      link --force "$shared_path/config/$item" "$stage_path/config/$item"
   done
 }
 
@@ -180,10 +185,8 @@ symlink()
 
   for dir in tmp log pids files
   do
-    log_step "${dir}"
-    remove_paths "${stage_path}/${dir}"
-    link --force "${shared_path}/${dir}" to "${stage_path}/${dir}"
-    log_step success
+    log_step "${dir}" \
+      link --force "${shared_path}/${dir}" to "${stage_path}/${dir}"
   done
 
   if ! path_exists "$shared_path/public/"
@@ -192,10 +195,8 @@ symlink()
   fi
   for dir in $(ls -A "$shared_path/public/")
   do
-    log_step "public/${dir}"
-    remove_paths "${stage_path}/public/${dir}"
-    link --force "${shared_path}/public/${dir}" to "${stage_path}/public/${dir}"
-    log_step success
+    log_step "public/${dir}" \
+      link --force "${shared_path}/public/${dir}" to "${stage_path}/public/${dir}"
   done
 }
 
