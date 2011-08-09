@@ -65,47 +65,43 @@ update()
 
 update_repository()
 {
-  #log "Updating local repository in $shared_path/$project."
-
-  #: ${scm_path:="$shared_path/scm"} # Sanity checking
-
-  fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
+  log_step "  Downloading ${project}" \
+    fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
 
   enter "${shared_path}/${project}"
 
-  log_todo "**** move revision handling to fetch_uri"
+  log_todo "  **** move revision handling to fetch_uri ****"
 
   case "${scm_type}" in
     git|github)
       if file_exists ".gitmodules"
       then
-        log "Updating submodules."
-        git submodule init 2>/dev/null
-        git submodule update
+        log_step "Updating submodules" \
+        git submodule init 2>/dev/null && git submodule update
       fi
 
       [[ -n "$revision" ]] || return 0
-      log "Checking out revision '$revision'."
-      git checkout $revision >/dev/null 2>&1
+      log_step "Checking out revision '$revision'." \
+        git checkout $revision >/dev/null 2>&1
       ;;
 
     hg)
       if [[ -n "$revision" ]]
       then
         # TODO: Find out if this is how it's done for hg ;)
-        log "Checking out revision '$revision'."
+        log_step "Checking out revision '$revision'." \
         hg update $branch $revision
       else
-        log "Updating branch '$branch'."
-        hg update $branch
+        log_step "Updating branch '$branch'." \
+          hg update $branch
       fi
       ;;
 
     svn)
       (( revision > 0 )) || return 0
 
-      log "Checking out revision $revision"
-      svn checkout -r $revision
+      log_step "Checking out revision $revision" \
+        svn checkout -r $revision
       ;;
 
   esac
@@ -131,12 +127,12 @@ replace_current()
 {
   if path_exists "$release_path"
   then
-    log "Moving aside previous release."
-    mv "$release_path" "$project_path/previous/$timestamp"
+    log_step "Move aside previous release." \
+      mv "$release_path" "$project_path/previous/$timestamp"
   fi
 
-  log "Replacing $release_path from $stage_path"
-  mv "$stage_path" "$release_path"
+  log_step "Replace $release_path with $stage_path" \
+    mv "$stage_path" "$release_path"
 }
 
 fail_replace_current()
@@ -144,13 +140,11 @@ fail_replace_current()
   log_todo "should \$previous == \$timestamp ?"
   if path_exists "$previous"
   then
-    log "Discarding current release to $discard_path/$timestamp ..."
-    mv "$release_path" "$discard_path/$timestamp"
+    log_step "Move current release to $discard_path/$timestamp ..." \
+      mv "$release_path" "$discard_path/$timestamp"
 
-    log "Rolling back to previous release $previous ..."
-    mv "$previous" "${release_path%/}"
-
-    log "revert complete."
+    log_step "Roll back to previous release $previous ..." \
+      mv "$previous" "${release_path%/}"
   else
     log "No previous releases to revert to."
   fi
@@ -170,7 +164,7 @@ configure()
 
   enter "${shared_path}/config"
 
-  log "Setting up persistent config files:"
+  log "  Setting up persistent config files:"
   for config_item in "$shared_path"/config/*
   do
     item="${config_item##*/}"
@@ -181,60 +175,68 @@ configure()
 
 symlink()
 {
-  log "Setting up persistent directories:"
+  local _path _paths
 
-  for dir in tmp log pids files
+  log "  Setting up persistent directories:"
+  for _path in tmp log pids files
   do
-    log_step "${dir}" \
-      link --force "${shared_path}/${dir}" to "${stage_path}/${dir}"
+    log_step "${_path}" \
+      link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
-  if ! path_exists "$shared_path/public/"
-  then
-    error "\nPlease first run:\n\n  bdsm rails setup \n\nand repeat:\n\n  bdsm deploy\n"
-  fi
-  for dir in $(ls -A "$shared_path/public/")
+  path_exists "$shared_path/public/" ||
+    error "\nPlease run the folloing command first and then retry:\n\tbdsm rails setup"
+
+  _paths=($( find "$shared_path/public/" -mindepth 1 -maxdepth 1 -type d ))
+  for _path in "${_paths[@]}"
   do
-    log_step "public/${dir}" \
-      link --force "${shared_path}/public/${dir}" to "${stage_path}/public/${dir}"
+    log_step "public/${_path}" \
+      link --force "${shared_path}/public/${_path}" \
+      to "${stage_path}/public/${_path}"
+  done
+}
+
+remove_releases()
+{
+  local _release
+
+  while (( $# > 0 ))
+  do
+    _release="${1}"
+    shift
+    log_step "Removing old release ${_release}" remove_paths "${_release}"
   done
 }
 
 cleanup()
 {
-  if path_exists "$project_path/previous"
-  then
-    log "Removing old releases: ${old_releases[@]}"
-    enter "${project_path}/previous"
+  path_exists "$project_path/previous" || return 0 # No old releases
+  array_is_nonempty old_releases       || return 0 # No old releases
 
-    if array_is_nonempty old_releases
-    then
-      if ! remove_paths "${old_releases[@]}"
-      then
-        log "There was an error removing the old releases."
-      fi
-    fi
-  fi
+  log "  Removing old releases: ${old_releases[@]}"
+  enter "${project_path}/previous"
+
+  remove_releases "${old_releases[@]}" ||
+    log "There was an error removing old releases."
 }
 
 record()
 { # TODO: What else could we record that would be useful?
-  if path_exists "${release_path}"
-  then
-    revision=$(
-    builtin cd "${shared_path}/${project}"
-    git log --no-color -1 | awk '/commit/{print $2}'
-    )
+  path_exists "${release_path}" || return 0 # Release failed, nothing to do...
 
-    branch=$(
-    builtin cd "${shared_path}/${project}"
-    git branch --no-color | awk '/^\* /{print $2}'
-    )
+  revision=$(
+  builtin cd "${shared_path}/${project}"
+  git log --no-color -1 | awk '/commit/{print $2}'
+  )
 
-    write "$revision"       to "$release_path/revision"
-    write "$branch"         to "$release_path/branch"
-    write "$repository_url" to "$release_path/repository_url"
-  fi
+  branch=$(
+  builtin cd "${shared_path}/${project}"
+  git branch --no-color | awk '/^\* /{print $2}'
+  )
+
+  write "$revision"       to "$release_path/revision"
+  write "$branch"         to "$release_path/branch"
+  write "$repository_url" to "$release_path/repository_url"
 }
 
 run_deploy()
@@ -255,17 +257,14 @@ run_deploy()
   # This means that users may disable hooks by changing their
   # execute bit.
   #
-
-  if ! command_exists rsync
-  then
+  command_exists rsync ||
     error "The 'rsync' command was not found, please install rsync before using"\
       "deploy. (Note that there is an rsync bdsm extension, which you can install"\
       "root# bdsm rsync package install"
-  fi
 
   step deploy
 
-  log "Deploy started at $timestamp and completed at $(date +%m.%d.%YT%H:%M:%S)"
+  log "  Deploy started at $timestamp and completed at $(date +%m.%d.%YT%H:%M:%S)"
 }
 
 deploy()
@@ -284,7 +283,7 @@ revert_on_error()
 
 revert()
 {
-  log "revert ..."
+  log "  reverting ..."
   retreat "deploy" "${deploy_steps[@]}"
 }
 
