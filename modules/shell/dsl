@@ -170,7 +170,7 @@ configure()
     item="${config_item##*/}"
     log_step "${item}"
     link --force "$shared_path/config/$item" "$stage_path/config/$item"
-    log_step "${item}" success
+    log_step success
   done
 }
 
@@ -183,7 +183,7 @@ symlink()
     log_step "${dir}"
     remove_paths "${stage_path}/${dir}"
     link --force "${shared_path}/${dir}" to "${stage_path}/${dir}"
-    log_step "${dir}" success
+    log_step success
   done
 
   if ! path_exists "$shared_path/public/"
@@ -195,7 +195,7 @@ symlink()
     log_step "public/${dir}"
     remove_paths "${stage_path}/public/${dir}"
     link --force "${shared_path}/public/${dir}" to "${stage_path}/public/${dir}"
-    log_step "public/${dir}" success
+    log_step success
   done
 }
 
