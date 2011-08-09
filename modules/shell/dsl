@@ -164,10 +164,9 @@ configure()
 
   enter "${shared_path}/config"
 
-  log "  Setting up persistent config files:"
   for config_item in "$shared_path"/config/*
   do
-    item="${config_item##*/}"
+    item="linking ${config_item##*/}"
     log_step "${item}" \
       link --force "$shared_path/config/$item" "$stage_path/config/$item"
   done
@@ -179,7 +178,7 @@ symlink()
 
   for _path in tmp log pids files
   do
-    log_step "linking persistent directory ${_path}" \
+    log_step "linking ${_path}" \
       link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
