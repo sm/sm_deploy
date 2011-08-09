@@ -177,20 +177,19 @@ symlink()
 {
   local _path _paths
 
-  log "  Setting up persistent directories:"
   for _path in tmp log pids files
   do
-    log_step "${_path}" \
+    log_step "linking persistent directory ${_path}" \
       link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
   path_exists "$shared_path/public/" ||
     error "\nPlease run the folloing command first and then retry:\n\tbdsm rails setup"
 
-  _paths=($( find "$shared_path/public/" -mindepth 1 -maxdepth 1 -type d ))
+  _paths=($( find "$shared_path/public" -mindepth 1 -maxdepth 1 -type d ))
   for _path in "${_paths[@]}"
   do
-    log_step "public/${_path}" \
+    log_step "linking public path ${_path}" \
       link --force "${shared_path}/public/${_path}" \
       to "${stage_path}/public/${_path}"
   done
@@ -213,9 +212,7 @@ cleanup()
   path_exists "$project_path/previous" || return 0 # No old releases
   array_is_nonempty old_releases       || return 0 # No old releases
 
-  log "  Removing old releases: ${old_releases[@]}"
   enter "${project_path}/previous"
-
   remove_releases "${old_releases[@]}" ||
     log "There was an error removing old releases."
 }
