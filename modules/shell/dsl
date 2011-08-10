@@ -188,6 +188,8 @@ symlink()
   _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
   for _path in "${_paths[@]}"
   do
+    _path="${_path#%${_prefix}/public}"
+
     log_step "linking public path ${_path} (shared/public/${_path} => stage/public/${_path})" \
       link --force "${shared_path}/public/${_path}" \
       to "${stage_path}/public/${_path}"
