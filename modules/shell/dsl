@@ -125,13 +125,15 @@ fail_stage_current()
 
 replace_current()
 {
+  local _prefix="${shared_path%/*}"
+
   if path_exists "$release_path"
   then
-    log_step "Move aside previous release." \
+    log_step "Moving asside previous release (${release_path#${_prefix}} => ${project_path#${_prefix}}/previous/$timestamp)" \
       mv "$release_path" "$project_path/previous/$timestamp"
   fi
 
-  log_step "Replace $release_path with $stage_path" \
+  log_step "Releasing to ${release_path#${_prefix}} (${release_path#${_prefix}} => ${stage_path#${_prefix}})" \
     mv "$stage_path" "$release_path"
 }
 
