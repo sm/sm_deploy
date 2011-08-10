@@ -87,6 +87,7 @@ update_repository()
           git checkout $revision >/dev/null 2>&1
       else
         revision=$( git log --no-color -1 | awk '/commit/{print $2}')
+        revision=${revision:0:7}
       fi
 
       [[ -n "${branch}" ]] ||
