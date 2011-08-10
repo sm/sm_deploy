@@ -2,7 +2,7 @@
 
 hook()
 {
-  _hook="$1"
+  local _hook="$1"
 
   (( _hooks_flag )) || return 0
 
@@ -40,7 +40,7 @@ hook()
 
 hook_source()
 {
-  _file="$1"
+  local _file="$1"
   ( source_files "${_file}")
 }
 
