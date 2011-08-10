@@ -154,23 +154,24 @@ fail_replace_current()
 
 configure()
 {
+  local _name _file
+
   if ! path_exists "$shared_path/config"
   then
     log "No shared config path found, skipping shared configuration."
     return 0
   fi
 
-  local item config_item
-
   ensure_paths_exist "$stage_path/config"
 
   enter "${shared_path}/config"
 
-  for config_item in "$shared_path"/config/*
+  for _file in "$shared_path"/config/*
   do
-    item="linking ${config_item##*/} (shared/config/$item => stage/config/$item)"
-    log_step "${item}" \
-      link --force "$shared_path/config/$item" "$stage_path/config/$item"
+    _name="${_file##*/}"
+
+    log_step "Linking ${_name} (shared/config/${_name} => stage/config/${_name})" \
+      link --force "$shared_path/config/${_name}" "$stage_path/config/${_name}"
   done
 }
 
@@ -181,7 +182,7 @@ symlink()
 
   for _path in tmp log pids files
   do
-    log_step "linking ${_path} (shared/${_path} => stage/${_path})" \
+    log_step "Linking ${_path} (shared/${_path} => stage/${_path})" \
       link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
