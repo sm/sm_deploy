@@ -4,7 +4,7 @@ hook()
 {
   _hook="$1"
 
-  (( _hooks_flag != 0 )) || return 0
+  (( _hooks_flag )) || return 0
 
   # System
   if file_is_nonempty "$shared_path/deploy/$_hook"

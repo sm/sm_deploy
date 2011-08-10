@@ -17,7 +17,7 @@ true \
   ${previous_path:="${project_path}/previous"} \
   ${stage_path:="${project_path}/stage"} \
   ${deploy_log_path:="${shared_path}/log/deploy"} \
-  ${hooks_flag:=1}
+  ${_hooks_flag:=1}
 
 ensure_paths_exist "$previous_path" "$discard_path" "$deploy_log_path"
 
