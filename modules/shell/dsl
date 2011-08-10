@@ -65,7 +65,7 @@ update()
 
 update_repository()
 {
-  log_step "  Downloading ${project}" \
+  log_step "Downloading ${project} repository changes" \
     fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
 
   enter "${shared_path}/${project}"
@@ -109,8 +109,8 @@ update_repository()
 
 stage_current()
 {
-  log "Staging new release to ${stage_path}"
-  rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
+  log_step "Staging to ${stage_path}" \
+    rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
   ensure_paths_exist "$stage_path/public"
 }
 
