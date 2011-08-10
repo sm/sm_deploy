@@ -166,7 +166,7 @@ configure()
 
   for config_item in "$shared_path"/config/*
   do
-    item="linking ${config_item##*/} ($shared_path/config/$item => $stage_path/config/$item)"
+    item="linking ${config_item##*/} (shared/config/$item => stage/config/$item)"
     log_step "${item}" \
       link --force "$shared_path/config/$item" "$stage_path/config/$item"
   done
@@ -174,21 +174,21 @@ configure()
 
 symlink()
 {
-  local _path _paths
+  local _path _paths _prefix="${shared_path%/*}"
 
   for _path in tmp log pids files
   do
-    log_step "linking ${_path} (${shared_path}/${_path} => ${stage_path}/${_path})" \
+    log_step "linking ${_path} (shared/${_path} => stage/${_path})" \
       link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
   path_exists "$shared_path/public/" ||
     error "\nPlease run the folloing command first and then retry:\n\tbdsm rails setup"
 
-  _paths=($( find "$shared_path/public" -mindepth 1 -maxdepth 1 -type d ))
+  _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
   for _path in "${_paths[@]}"
   do
-    log_step "linking public path ${_path} (${shared_path}/public/${_path} => ${stage_path}/public/${_path})" \
+    log_step "linking public path ${_path} (shared/public/${_path} => stage/public/${_path})" \
       link --force "${shared_path}/public/${_path}" \
       to "${stage_path}/public/${_path}"
   done
