@@ -166,7 +166,7 @@ configure()
 
   for config_item in "$shared_path"/config/*
   do
-    item="linking ${config_item##*/}"
+    item="linking ${config_item##*/} ($shared_path/config/$item => $stage_path/config/$item)"
     log_step "${item}" \
       link --force "$shared_path/config/$item" "$stage_path/config/$item"
   done
@@ -178,7 +178,7 @@ symlink()
 
   for _path in tmp log pids files
   do
-    log_step "linking ${_path}" \
+    log_step "linking ${_path} (${shared_path}/${_path} => ${stage_path}/${_path})" \
       link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
@@ -188,7 +188,7 @@ symlink()
   _paths=($( find "$shared_path/public" -mindepth 1 -maxdepth 1 -type d ))
   for _path in "${_paths[@]}"
   do
-    log_step "linking public path ${_path}" \
+    log_step "linking public path ${_path} (${shared_path}/public/${_path} => ${stage_path}/public/${_path})" \
       link --force "${shared_path}/public/${_path}" \
       to "${stage_path}/public/${_path}"
   done
