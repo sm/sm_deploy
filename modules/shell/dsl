@@ -70,6 +70,7 @@ update_repository()
 
   enter "${shared_path}/${project}"
 
+
   log_todo "  **** move revision handling to fetch_uri ****"
 
   case "${scm_type}" in
@@ -80,9 +81,16 @@ update_repository()
         git submodule init 2>/dev/null && git submodule update
       fi
 
-      [[ -n "$revision" ]] || return 0
-      log_step "Checking out revision '$revision'." \
-        git checkout $revision >/dev/null 2>&1
+      if [[ -n "$revision" ]]
+      then
+        log_step "Checking out revision '$revision'." \
+          git checkout $revision >/dev/null 2>&1
+      else
+        revision=$( git log --no-color -1 | awk '/commit/{print $2}')
+      fi
+
+      [[ -n "${branch}" ]] ||
+        branch=$( git branch --no-color | awk '/^\* /{print $2}')
       ;;
 
     hg)
@@ -103,13 +111,13 @@ update_repository()
       log_step "Checking out revision $revision" \
         svn checkout -r $revision
       ;;
-
   esac
+
 }
 
 stage_current()
 {
-  log_step "Staging to ${stage_path}" \
+  log_step "Staging ${project} ${branch:-} ${revision:-} (${stage_path})" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
   ensure_paths_exist "$stage_path/public"
 }
@@ -203,7 +211,6 @@ symlink()
 remove_releases()
 {
   local _release
-
   while (( $# > 0 ))
   do
     _release="${1}"
@@ -226,19 +233,14 @@ record()
 { # TODO: What else could we record that would be useful?
   path_exists "${release_path}" || return 0 # Release failed, nothing to do...
 
-  revision=$(
-  builtin cd "${shared_path}/${project}"
-  git log --no-color -1 | awk '/commit/{print $2}'
-  )
+  [[ -z "${revision:-}" ]] ||
+    write "${revision}" to "${release_path}/revision"
 
-  branch=$(
-  builtin cd "${shared_path}/${project}"
-  git branch --no-color | awk '/^\* /{print $2}'
-  )
+  [[ -z "${branch:-}" ]] ||
+    write "${branch}" to "${release_path}/branch"
 
-  write "$revision"       to "$release_path/revision"
-  write "$branch"         to "$release_path/branch"
-  write "$repository_url" to "$release_path/repository_url"
+  [[ -z "${repository_url}" ]] || # TODO: get this from .uri file.
+    write "$repository_url" to "${release_path}/repository_url"
 }
 
 run_deploy()
@@ -247,9 +249,9 @@ run_deploy()
   trace_filter deploy
 
   # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
-  export log_file="$deploy_log_path/$timestamp.log"
-  exec 3>>"$log_file"
-  exec &> >(tee -a "$log_file")
+  export log_file="${deploy_log_path}/${timestamp}.log"
+  exec 3>>"${log_file}"
+  exec &> >(tee -a "${log_file}")
   # Error handling
   trap revert_on_error ERR
 
@@ -266,7 +268,7 @@ run_deploy()
 
   step deploy
 
-  log "  Deploy started at $timestamp and completed at $(date +%m.%d.%YT%H:%M:%S)"
+  log "  Deploy started at ${timestamp} and completed at $(date +%m.%d.%YT%H:%M:%S)"
 }
 
 deploy()
