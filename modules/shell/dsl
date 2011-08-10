@@ -174,7 +174,8 @@ configure()
 
 symlink()
 {
-  local _path _paths _prefix="${shared_path%/*}"
+  local _path _paths _prefix="${shared_path%/*}" \
+    _shared_public_path="${shared_path}/public"
 
   for _path in tmp log pids files
   do
@@ -186,13 +187,13 @@ symlink()
     error "\nPlease run the folloing command first and then retry:\n\tbdsm rails setup"
 
   _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
+
   for _path in "${_paths[@]}"
   do
-    _path="${_path#${shared_path}/public}"
+    _path="${_path#${_shared_public_path}/}"
 
-    log_step "linking path ${_path} (shared/${_path} => stage/${_path})" \
-      link --force "${shared_path}/${_path}" \
-      to "${stage_path}/${_path}"
+    log_step "Linking path ${_path} (shared/public/${_path} => stage/public/${_path})" \
+      link --force "${_shared_public_path}/${_path}" to "${stage_path}/public/${_path}"
   done
 }
 
