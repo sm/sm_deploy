@@ -4,12 +4,12 @@ if ! command_exists rsync
 then
   error "rsync is required in order to use the deploy extension, "\
     "please install rsync before continuing\n"\
-    "  bdsm rsync package install"
+    "  sm rsync package install"
 fi
 
 if variable_is_empty repository_url
 then
-  error "The project's repository_url must be set in configuration files (eg: ~/.bdsmrc)"
+  error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
 fi
 
 true \

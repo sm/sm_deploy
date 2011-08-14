@@ -196,7 +196,7 @@ symlink()
   done
 
   path_exists "$shared_path/public/" ||
-    error "\nPlease run the folloing command first and then retry:\n\tbdsm rails setup"
+    error "\nPlease run the folloing command first and then retry:\n\tsm rails setup"
 
   _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
 
@@ -263,9 +263,9 @@ run_deploy()
   # execute bit.
   #
   command_exists rsync ||
-    error "The 'rsync' command was not found, please install rsync before using"\
-      "deploy. (Note that there is an rsync bdsm extension, which you can install"\
-      "root# bdsm rsync package install"
+    error "The 'rsync' command was not found, please install rsync before using deploy."\
+      "(Note that there is an rsync extension in the networking extension set)\n"\
+      "root# sm rsync package install"
 
   step deploy
 

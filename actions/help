@@ -2,7 +2,7 @@
 
 description "Deployment management extension."
 
-note "If any one of the deployment steps fail, then the deploy should fail as well.  If this is not the case please let me know right away and provide a gist of 'bdsm --trace deploy' so that I can inspect where the failure is occurring. "
+note "If any one of the deployment steps fail, then the deploy should fail as well.  If this is not the case please let me know right away and provide a gist of 'sm --trace deploy' so that I can inspect where the failure is occurring. "
 
 resource "http://extensions.beginrescueend.com/deploy/ #(documentation)"
 resource "https://www.pivotaltracker.com/projects/26822 #(development tracker)"
