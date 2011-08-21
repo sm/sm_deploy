@@ -33,7 +33,8 @@ deploy_initialize()
   timestamp="$(date +%m.%d.%YT%H:%M:%S)"
 
   deploy_steps=(
-    update_repository stage_current configure symlink
+    update_repository stage_current
+    configure configure_db symlink
     replace_current cleanup record
   )
 }
@@ -221,6 +222,21 @@ configure()
       link --force "$shared_path/config/${_name}" "$stage_path/config/${_name}"
   done
 }
+
+configure_db()
+{
+  local _name _file
+
+  if ! path_exists "$shared_path/db"
+  then
+    log "No shared/db path found, skipping shared/db."
+    return 0
+  fi
+
+  log_step "Linking db path (shared/db => stage/db)" \
+    link --force "$shared_path/db" "$stage_path/db"
+}
+
 
 symlink()
 {
