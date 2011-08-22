@@ -298,7 +298,7 @@ record()
     write "$repository_url" to "${release_path}/repository_url"
 }
 
-run_deploy()
+do_deploy()
 {
   trap trace_filter RETURN
   trace_filter deploy
@@ -340,7 +340,7 @@ revert_on_error()
   kill -s USR2 $APP_PID #to exit application not current subshell
 }
 
-revert()
+do_revert()
 {
   log "  reverting ..."
   retreat "deploy" "${deploy_steps[@]}"
