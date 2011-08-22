@@ -43,34 +43,31 @@ file may be used to configure deployment settings.
 .SH STEPS
 
 1. update_repository
-
 2. deploy:
-
-  a. stage
-  b. configure
-  c. symlink
-  d. replace_current
-  e. cleanup
-  f. record
+2a. stage
+2b. configure
+2c. symlink
+2d. replace_current
+2e. cleanup
+2f. record
 
 .SH HOOKS
 
-  For each step there are two hooks one that is run before ('before_' prefix)
-    and one that is run after ('after_' prefix).
+For each step there are two hooks one that is run before ('before_' prefix)
+and one that is run after ('after_' prefix).
 
-  Each hook is the name of a step listed above prefixed with either before_ or
-  after_.  For example around steps a - f there is a 'before_deploy' and an
-  'after_deploy'
+Each hook is the name of a step listed above prefixed with either before_ or
+after_.  For example around steps a - f there is a before_deploy and an
+after_deploy
 
-  If you want to execute a task before the code is moved in place but after
-    everything is setup in the staging area, use 'before_replace_current' hook.
+If you want to execute a task before the code is moved in place but after
+everything is setup in the staging area, use 'before_replace_current' hook.
 
 .SH PREREQUISITES
-
-   - git
-   - curl
-   - rsync
-   - subversion / mercurial (if the application's repository uses them).
+- git
+- curl
+- rsync
+- subversion / mercurial (if the application's repository uses them).
 
 .SH FEATURE REQUESTS
 Feature requests may be sent to the project's GitHub repository which can be
@@ -86,8 +83,8 @@ can be found at https://github.com/sm/sm_deploy/issues
 If any one of the deployment steps fail, then the deploy should fail as well.  If this is not the case please let me know right away and provide a gist of 'sm --trace deploy' so that I can inspect where the failure is occurring.
 
 .SH RESOURCES
-    http://extensions.beginrescueend.com/deploy/ #(documentation)
-    https://www.pivotaltracker.com/projects/26822 #(development tracker)
+http://extensions.beginrescueend.com/deploy/ #(documentation)
+https://www.pivotaltracker.com/projects/26822 #(development tracker)
 
 .SH AUTHOR
 Wayne E. Seguin <wayneeseguin@gmail.com>
