@@ -34,7 +34,7 @@ deploy_initialize()
 
   deploy_steps=(
     update_repository stage_current configure symlink
-    replace_current cleanup record
+    release cleanup record
   )
 }
 
@@ -84,6 +84,10 @@ hook_source()
 
 before_step()
 {
+  if path_exists "${release_path}"
+  then # If release path already exists, use it
+    enter "$release_path"
+  fi
   local _name="$1"
   shift
   hook "before_${_name}" "$@"
@@ -98,7 +102,7 @@ after_step()
 
 update()
 {
-  update_repository && replace_current
+  update_repository && release
 }
 
 update_repository()
@@ -158,6 +162,9 @@ stage_current()
 {
   log_step "Staging ${project} ${branch:-} ${revision:-} (${stage_path})" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
+
+  enter "$stage_path"
+
   ensure_paths_exist "$stage_path/public"
 }
 
@@ -170,7 +177,7 @@ fail_stage_current()
   fi
 }
 
-replace_current()
+release()
 {
   local _prefix="${shared_path%/*}"
 
@@ -182,9 +189,11 @@ replace_current()
 
   log_step "Releasing to ${release_path#${_prefix}} (${release_path#${_prefix}} => ${stage_path#${_prefix}})" \
     mv "$stage_path" "$release_path"
+
+  enter "$release_path"
 }
 
-fail_replace_current()
+fail_release()
 {
   log_todo "should \$previous == \$timestamp ?"
   if path_exists "$previous"
