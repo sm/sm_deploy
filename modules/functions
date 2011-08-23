@@ -34,9 +34,9 @@ deploy_initialize()
   timestamp="$(date +%m.%d.%YT%H:%M:%S)"
 
   deploy_steps=(
-    update_repository stage_current
+    update_repository stage_release
     configure configure_db symlink
-    replace_current cleanup record
+    release cleanup record
   )
   export shared_path project_path stage_path release_path previous_path \
     discard_path
@@ -102,7 +102,7 @@ after_step()
 
 update()
 {
-  update_repository && replace_current
+  update_repository && release
 }
 
 update_repository()
@@ -158,23 +158,26 @@ update_repository()
 
 }
 
-stage_current()
+stage_release()
 {
   log_step "Staging ${project} ${branch:-} ${revision:-} (${stage_path})" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
+
+  enter "$stage_path"
+
   ensure_paths_exist "$stage_path/public"
 }
 
-fail_stage_current()
+fail_stage_release()
 {
-  log "Removing release from $stage_path"
   if path_exists "${stage_path}"
   then
-    remove_paths "${stage_path}"
+    log_step "Removing release from $stage_path" \
+      remove_paths "${stage_path}"
   fi
 }
 
-replace_current()
+release()
 {
   local _prefix="${shared_path%/*}"
 
@@ -186,17 +189,19 @@ replace_current()
 
   log_step "Releasing to ${release_path#${_prefix}} (${release_path#${_prefix}} => ${stage_path#${_prefix}})" \
     mv "$stage_path" "$release_path"
+
+  enter "$release_path"
 }
 
-fail_replace_current()
+fail_release()
 {
   log_todo "should \$previous == \$timestamp ?"
   if path_exists "$previous"
   then
-    log_step "Move current release to $discard_path/$timestamp ..." \
+    log_step "Moving previous release to $discard_path/$timestamp" \
       mv "$release_path" "$discard_path/$timestamp"
 
-    log_step "Roll back to previous release $previous ..." \
+    log_step "Rolling back to previous release $previous" \
       mv "$previous" "${release_path%/}"
   else
     log "No previous releases to revert to."
@@ -323,6 +328,11 @@ do_deploy()
     error "The 'rsync' command was not found, please install rsync before using deploy."\
       "(Note that there is an rsync extension in the networking extension set)\n"\
       "root# sm rsync package install"
+
+  if path_exists "${release_path}"
+  then # If release path already exists, start inside it.
+    enter "$release_path"
+  fi
 
   step deploy
 
