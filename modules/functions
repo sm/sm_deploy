@@ -14,6 +14,7 @@ deploy_initialize()
     ${discard_path:="${shared_path}/discard"} \
     ${previous_path:="${project_path}/previous"} \
     ${stage_path:="${project_path}/stage"} \
+    ${release_path:="${project_path}/release"} \
     ${deploy_log_path:="${shared_path}/log/deploy"} \
     ${_hooks_flag:=1}
 
@@ -37,6 +38,8 @@ deploy_initialize()
     configure configure_db symlink
     replace_current cleanup record
   )
+  export shared_path project_path stage_path release_path previous_path \
+    discard_path
 }
 
 hook()
