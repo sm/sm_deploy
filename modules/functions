@@ -85,10 +85,6 @@ hook_source()
 
 before_step()
 {
-  if path_exists "${release_path}"
-  then # If release path already exists, use it
-    enter "$release_path"
-  fi
   local _name="$1"
   shift
   hook "before_${_name}" "$@"
@@ -171,10 +167,10 @@ stage_release()
 
 fail_stage_release()
 {
-  log "Removing release from $stage_path"
   if path_exists "${stage_path}"
   then
-    remove_paths "${stage_path}"
+    log_step "Removing release from $stage_path" \
+      remove_paths "${stage_path}"
   fi
 }
 
@@ -329,6 +325,11 @@ do_deploy()
     error "The 'rsync' command was not found, please install rsync before using deploy."\
       "(Note that there is an rsync extension in the networking extension set)\n"\
       "root# sm rsync package install"
+
+  if path_exists "${release_path}"
+  then # If release path already exists, start inside it.
+    enter "$release_path"
+  fi
 
   step deploy
 
