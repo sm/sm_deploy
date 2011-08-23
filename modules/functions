@@ -33,7 +33,8 @@ deploy_initialize()
   timestamp="$(date +%m.%d.%YT%H:%M:%S)"
 
   deploy_steps=(
-    update_repository stage_current configure symlink
+    update_repository stage_release
+    configure configure_db symlink
     release cleanup record
   )
 }
@@ -158,7 +159,7 @@ update_repository()
 
 }
 
-stage_current()
+stage_release()
 {
   log_step "Staging ${project} ${branch:-} ${revision:-} (${stage_path})" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
@@ -168,7 +169,7 @@ stage_current()
   ensure_paths_exist "$stage_path/public"
 }
 
-fail_stage_current()
+fail_stage_release()
 {
   log "Removing release from $stage_path"
   if path_exists "${stage_path}"
@@ -198,10 +199,10 @@ fail_release()
   log_todo "should \$previous == \$timestamp ?"
   if path_exists "$previous"
   then
-    log_step "Move current release to $discard_path/$timestamp ..." \
+    log_step "Moving previous release to $discard_path/$timestamp" \
       mv "$release_path" "$discard_path/$timestamp"
 
-    log_step "Roll back to previous release $previous ..." \
+    log_step "Rolling back to previous release $previous" \
       mv "$previous" "${release_path%/}"
   else
     log "No previous releases to revert to."
@@ -230,6 +231,21 @@ configure()
       link --force "$shared_path/config/${_name}" "$stage_path/config/${_name}"
   done
 }
+
+configure_db()
+{
+  local _name _file
+
+  if ! path_exists "$shared_path/db"
+  then
+    log "No shared/db path found, skipping shared/db."
+    return 0
+  fi
+
+  log_step "Linking db path (shared/db => stage/db)" \
+    link --force "$shared_path/db" "$stage_path/db"
+}
+
 
 symlink()
 {
@@ -291,7 +307,7 @@ record()
     write "$repository_url" to "${release_path}/repository_url"
 }
 
-run_deploy()
+do_deploy()
 {
   trap trace_filter RETURN
   trace_filter deploy
@@ -333,7 +349,7 @@ revert_on_error()
   kill -s USR2 $APP_PID #to exit application not current subshell
 }
 
-revert()
+do_revert()
 {
   log "  reverting ..."
   retreat "deploy" "${deploy_steps[@]}"

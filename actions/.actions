@@ -1,3 +1,0 @@
-default=run_deploy()
-deploy=run_deploy()
-rollback=rollback()
