@@ -10,8 +10,8 @@ deploy_initialize()
   variable_is_nonempty repository_url ||
     error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
 
-  path_exists "${project_path}/verfs" ||
-    verfs create path "${project_path}" strategy name method copy activate first
+  versionedfs create \
+    path "${project_path}" strategy name method copy activate first
 
   timestamp="$(date +%m.%d.%YT%H:%M:%S)"
 
@@ -22,9 +22,9 @@ deploy_initialize()
     ${deploy_log_path:="${shared_path}/log/deploy/${timestamp}"} \
     ${_hooks_flag:=1}
 
-  paths_create "$deploy_log_path"
+  paths create "$deploy_log_path"
 
-  previous_releases=$( verfs versions path "${project_path}" name "${project}" )
+  previous_releases=$( versionedfs versions path "${project_path}" name "${project}" )
 
   previous="${previous_releases[0]}"
 
@@ -68,7 +68,7 @@ hook()
   fi
 
   # Project
-  if path_exists "$shared_path/$project" &&
+  if path exists "$shared_path/$project" &&
     file_is_executable "$shared_path/$project/config/deploy/${_hook}"
   then
     log_step "${project} ~ ${_hook}"
@@ -117,7 +117,7 @@ update_repository()
   fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
   log_step success
 
-  enter "${shared_path}/${project}"
+  paths enter "${shared_path}/${project}"
 
   log_todo "  **** move revision handling to fetch_uri ****"
 
@@ -169,17 +169,17 @@ stage_release()
   log_step "Staging ${project} ${branch:-} ${revision:-} (${stage_path})" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
 
-  enter "$stage_path"
+  paths enter "$stage_path"
 
-  paths_create "$stage_path/public"
+  paths create "$stage_path/public"
 }
 
 fail_stage_release()
 {
-  if path_exists "${stage_path}"
+  if path exists "${stage_path}"
   then
     log_step "Removing release from $stage_path" \
-      remove_paths "${stage_path}"
+      paths remove "${stage_path}"
   fi
 }
 
@@ -187,32 +187,32 @@ release()
 {
   local _prefix="${shared_path%/*}"
 
-  # if path_exists "$release_path"
+  # if path exists "$release_path"
   # then
   #   log_step "Moving asside previous release (${release_path#${_prefix}} => ${project_path#${_prefix}}/previous/$timestamp)" \
   #     mv "$release_path" "$project_path/previous/$timestamp"
   # fi
 
   log_step "Releasing ${project} ${version}"
-  verfs add "${project_path}" name "${project}" version ${version}
+  versionedfs add "${project_path}" name "${project}" version ${version}
   mv "$stage_path" "$release_path"
   log_step success
-  enter "$release_path"
+  paths enter "$release_path"
 }
 
 fail_release()
 {
-  if path_exists "$stage_path"
+  if path exists "$stage_path"
   then
     log_step "Discarding current stage to $discard_path/$timestamp" \
       mv "$stage_path" "$discard_path/$timestamp"
   fi
 
-  path_exists "$initial_release" || return 0
+  path exists "$initial_release" || return 0
 
-  paths_create "$discard_path" "$deploy_log_path"
+  paths create "$discard_path" "$deploy_log_path"
 
-  # TODO: verfs rollback
+  # TODO: versionedfs last # switch to last version
   log_step "Rolling back to previous release $previous" \
     mv "$previous" "${release_path%/}"
   else
@@ -224,15 +224,15 @@ configure()
 {
   local _name _file
 
-  if ! path_exists "$shared_path/config"
+  if ! path exists "$shared_path/config"
   then
     log "No shared config path found, skipping shared configuration."
     return 0
   fi
 
-  paths_create "$stage_path/config"
+  paths create "$stage_path/config"
 
-  enter "${shared_path}/config"
+  paths enter "${shared_path}/config"
 
   for _file in "$shared_path"/config/*
   do
@@ -247,7 +247,7 @@ configure_db()
 {
   local _name _file
 
-  if ! path_exists "$shared_path/db"
+  if ! path exists "$shared_path/db"
   then
     log "No shared/db path found, skipping shared/db."
     return 0
@@ -269,7 +269,7 @@ symlink()
       link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
-  path_exists "$shared_path/public/" ||
+  path exists "$shared_path/public/" ||
     error "\nPlease run the folloing command first and then retry:\n\tsm rails setup"
 
   _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
@@ -290,23 +290,24 @@ remove_releases()
   do
     _release="${1}"
     shift
-    log_step "Removing old release ${_release}" remove_paths "${_release}"
+    log_step "Removing old release ${_release}" \
+      paths remove "${_release}"
   done
 }
 
 cleanup()
 {
-  path_exists "$project_path/previous" || return 0 # No old releases
+  path exists "$project_path/previous" || return 0 # No old releases
   array_is_nonempty old_releases       || return 0 # No old releases
 
-  enter "${project_path}/previous"
+  paths enter "${project_path}/previous"
   remove_releases "${old_releases[@]}" ||
     log "There was an error removing old releases."
 }
 
 record()
 { # TODO: What else could we record that would be useful?
-  path_exists "${release_path}" || return 0 # Release failed, nothing to do...
+  path exists "${release_path}" || return 0 # Release failed, nothing to do...
 
   [[ -z "${revision:-}" ]] ||
     write "${revision}" to "${release_path}/revision"
@@ -341,9 +342,9 @@ do_deploy()
       "(Note that there is an rsync extension in the networking extension set)\n"\
       "root# sm sets install networking ; sm rsync package install"
 
-  if path_exists "${release_path}"
+  if path exists "${release_path}"
   then # If release path already exists, start inside it.
-    enter "$release_path"
+    paths enter "$release_path"
   fi
 
   step deploy
