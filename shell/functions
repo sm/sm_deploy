@@ -10,36 +10,38 @@ deploy_initialize()
   variable_is_nonempty repository_url ||
     error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
 
+  path_exists "${project_path}/verfs" ||
+    verfs create path "${project_path}" strategy name method copy activate first
+
+  timestamp="$(date +%m.%d.%YT%H:%M:%S)"
+
   true \
-    ${discard_path:="${shared_path}/discard"} \
-    ${previous_path:="${project_path}/previous"} \
+    ${discard_path:="${project_path}/discard"} \
     ${stage_path:="${project_path}/stage"} \
-    ${release_path:="${project_path}/release"} \
-    ${deploy_log_path:="${shared_path}/log/deploy"} \
+    ${release_path:="${project_path}/active/${project}"} \
+    ${deploy_log_path:="${shared_path}/log/deploy/${timestamp}"} \
     ${_hooks_flag:=1}
 
-  ensure_paths_exist "$previous_path" "$discard_path" "$deploy_log_path"
+  paths_create "$deploy_log_path"
 
-  previous_releases=$(
-    find "${previous_path}/" -mindepth 1 -maxdepth 1 -type d | sort
-  )
+  previous_releases=$( verfs versions path "${project_path}" name "${project}" )
 
   previous="${previous_releases[0]}"
 
-  old_releases=($(
-    find "${previous_path}/" -mindepth 1 -maxdepth 1 -type d | sort -r |
+  if (( ${#previous_releases[@]} > ${keep_releases:-3} ))
+  then
+    old_releases=($(echo ${previous_releases[@]} | sort -r |
     awk "NR > ${keep_releases:-3} { print \$0 }"
-  ))
-
-  timestamp="$(date +%m.%d.%YT%H:%M:%S)"
+    ))
+  fi
 
   deploy_steps=(
     update_repository stage_release
     configure configure_db symlink
     release cleanup record
   )
-  export shared_path project_path stage_path release_path previous_path \
-    discard_path
+
+  export shared_path project_path stage_path release_path discard_path
 }
 
 hook()
@@ -51,53 +53,57 @@ hook()
   # System
   if file_is_nonempty "$shared_path/deploy/$_hook"
   then
-    log_step "shared path ~ ${_hook}" \
-      hook_source "$shared_path/deploy/$_hook"
+    log_step "shared path ~ ${_hook}"
+    hook_source "$shared_path/deploy/$_hook"
+    log_step success
   fi
 
   # System, Environment specific
   if variable_is_nonempty environment &&
     file_is_executable "$shared_path/deploy/#{$environment}/${_hook}"
   then
-    log_step "shared ${environment} path ~ ${_hook}" \
-      hook_source "$shared_path/deploy/#{$environment}/${_hook}"
+    log_step "shared ${environment} path ~ ${_hook}"
+    hook_source "$shared_path/deploy/#{$environment}/${_hook}"
+    log_step success
   fi
 
   # Project
   if path_exists "$shared_path/$project" &&
     file_is_executable "$shared_path/$project/config/deploy/${_hook}"
   then
-    log_step "${project} ~ ${_hook}" \
-      hook_source "$shared_path/$project/config/deploy/${_hook}"
+    log_step "${project} ~ ${_hook}"
+    hook_source "$shared_path/$project/config/deploy/${_hook}"
+    log_step success
   fi
 
   # Project, environment
   if variable_is_nonempty environment &&
     file_is_executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
-    log_step "${project} ${environment} ~ ${_hook}" \
-      hook_source "$shared_path/$project/config/deploy/$environment/${_hook}"
+    log_step "${project} ${environment} ~ ${_hook}"
+    hook_source "$shared_path/$project/config/deploy/$environment/${_hook}"
+    log_step success
   fi
 }
 
 hook_source()
 {
   local _file="$1"
-  ( source_files "${_file}")
+  ( source_files "${_file}" )
 }
 
 before_step()
 {
   local _name="$1"
   shift
-  hook "before_${_name}" "$@"
+  hook "before_${_name}" "$@" >> "${deploy_log_path}/${_hook}" 2>&1
 }
 
 after_step()
 {
   local _name="$1"
   shift
-  hook "after_${_name}" "$@"
+  hook "after_${_name}" "$@" >> "${deploy_log_path}/${_hook}" 2>&1
 }
 
 update()
@@ -107,11 +113,11 @@ update()
 
 update_repository()
 {
-  log_step "Downloading ${project} repository changes" \
-    fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
+  log_step "Downloading ${project} repository changes"
+  fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
+  log_step success
 
   enter "${shared_path}/${project}"
-
 
   log_todo "  **** move revision handling to fetch_uri ****"
 
@@ -165,7 +171,7 @@ stage_release()
 
   enter "$stage_path"
 
-  ensure_paths_exist "$stage_path/public"
+  paths_create "$stage_path/public"
 }
 
 fail_stage_release()
@@ -181,28 +187,34 @@ release()
 {
   local _prefix="${shared_path%/*}"
 
-  if path_exists "$release_path"
-  then
-    log_step "Moving asside previous release (${release_path#${_prefix}} => ${project_path#${_prefix}}/previous/$timestamp)" \
-      mv "$release_path" "$project_path/previous/$timestamp"
-  fi
+  # if path_exists "$release_path"
+  # then
+  #   log_step "Moving asside previous release (${release_path#${_prefix}} => ${project_path#${_prefix}}/previous/$timestamp)" \
+  #     mv "$release_path" "$project_path/previous/$timestamp"
+  # fi
 
-  log_step "Releasing to ${release_path#${_prefix}} (${release_path#${_prefix}} => ${stage_path#${_prefix}})" \
-    mv "$stage_path" "$release_path"
-
+  log_step "Releasing ${project} ${version}"
+  verfs add "${project_path}" name "${project}" version ${version}
+  mv "$stage_path" "$release_path"
+  log_step success
   enter "$release_path"
 }
 
 fail_release()
 {
-  log_todo "should \$previous == \$timestamp ?"
-  if path_exists "$previous"
+  if path_exists "$stage_path"
   then
-    log_step "Moving previous release to $discard_path/$timestamp" \
-      mv "$release_path" "$discard_path/$timestamp"
+    log_step "Discarding current stage to $discard_path/$timestamp" \
+      mv "$stage_path" "$discard_path/$timestamp"
+  fi
 
-    log_step "Rolling back to previous release $previous" \
-      mv "$previous" "${release_path%/}"
+  path_exists "$initial_release" || return 0
+
+  paths_create "$discard_path" "$deploy_log_path"
+
+  # TODO: verfs rollback
+  log_step "Rolling back to previous release $previous" \
+    mv "$previous" "${release_path%/}"
   else
     log "No previous releases to revert to."
   fi
@@ -218,7 +230,7 @@ configure()
     return 0
   fi
 
-  ensure_paths_exist "$stage_path/config"
+  paths_create "$stage_path/config"
 
   enter "${shared_path}/config"
 
@@ -312,7 +324,7 @@ do_deploy()
   trace_filter deploy
 
   # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
-  export log_file="${deploy_log_path}/${timestamp}.log"
+  export log_file="${deploy_log_path}/deploy.log"
   exec 3>>"${log_file}"
   exec &> >(tee -a "${log_file}")
   # Error handling
@@ -327,7 +339,7 @@ do_deploy()
   command_exists rsync ||
     error "The 'rsync' command was not found, please install rsync before using deploy."\
       "(Note that there is an rsync extension in the networking extension set)\n"\
-      "root# sm rsync package install"
+      "root# sm sets install networking ; sm rsync package install"
 
   if path_exists "${release_path}"
   then # If release path already exists, start inside it.
@@ -341,7 +353,10 @@ do_deploy()
 
 deploy()
 {
-  steps "${deploy_steps[@]}"
+  for step in "${deploy_steps[@]}"
+  do
+    step "${deploy_steps[@]}" >> "${deploy_log_path}/${_hook}" 2>&1
+  done
 }
 
 revert_on_error()
@@ -355,7 +370,7 @@ revert_on_error()
 
 do_revert()
 {
-  log "  reverting ..."
+  log "  Reverting ..."
   retreat "deploy" "${deploy_steps[@]}"
 }
 
