@@ -68,7 +68,7 @@ hook()
   fi
 
   # Project
-  if path exists "$shared_path/$project" &&
+  if paths exist "$shared_path/$project" &&
     file_is_executable "$shared_path/$project/config/deploy/${_hook}"
   then
     log_step "${project} ~ ${_hook}"
@@ -176,7 +176,7 @@ stage_release()
 
 fail_stage_release()
 {
-  if path exists "${stage_path}"
+  if paths exist "${stage_path}"
   then
     log_step "Removing release from $stage_path" \
       paths remove "${stage_path}"
@@ -187,7 +187,7 @@ release()
 {
   local _prefix="${shared_path%/*}"
 
-  # if path exists "$release_path"
+  # if paths exist "$release_path"
   # then
   #   log_step "Moving asside previous release (${release_path#${_prefix}} => ${project_path#${_prefix}}/previous/$timestamp)" \
   #     mv "$release_path" "$project_path/previous/$timestamp"
@@ -202,13 +202,13 @@ release()
 
 fail_release()
 {
-  if path exists "$stage_path"
+  if paths exist "$stage_path"
   then
     log_step "Discarding current stage to $discard_path/$timestamp" \
       mv "$stage_path" "$discard_path/$timestamp"
   fi
 
-  path exists "$initial_release" || return 0
+  paths exist "$initial_release" || return 0
 
   paths create "$discard_path" "$deploy_log_path"
 
@@ -224,7 +224,7 @@ configure()
 {
   local _name _file
 
-  if ! path exists "$shared_path/config"
+  if ! paths exist "$shared_path/config"
   then
     log "No shared config path found, skipping shared configuration."
     return 0
@@ -247,7 +247,7 @@ configure_db()
 {
   local _name _file
 
-  if ! path exists "$shared_path/db"
+  if ! paths exist "$shared_path/db"
   then
     log "No shared/db path found, skipping shared/db."
     return 0
@@ -269,7 +269,7 @@ symlink()
       link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
-  path exists "$shared_path/public/" ||
+  paths exist "$shared_path/public/" ||
     error "\nPlease run the folloing command first and then retry:\n\tsm rails setup"
 
   _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
@@ -297,7 +297,7 @@ remove_releases()
 
 cleanup()
 {
-  path exists "$project_path/previous" || return 0 # No old releases
+  paths exist "$project_path/previous" || return 0 # No old releases
   array_is_nonempty old_releases       || return 0 # No old releases
 
   paths enter "${project_path}/previous"
@@ -307,7 +307,7 @@ cleanup()
 
 record()
 { # TODO: What else could we record that would be useful?
-  path exists "${release_path}" || return 0 # Release failed, nothing to do...
+  paths exist "${release_path}" || return 0 # Release failed, nothing to do...
 
   [[ -z "${revision:-}" ]] ||
     write "${revision}" to "${release_path}/revision"
@@ -342,7 +342,7 @@ do_deploy()
       "(Note that there is an rsync extension in the networking extension set)\n"\
       "root# sm sets install networking ; sm rsync package install"
 
-  if path exists "${release_path}"
+  if paths exist "${release_path}"
   then # If release path already exists, start inside it.
     paths enter "$release_path"
   fi
