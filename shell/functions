@@ -7,7 +7,7 @@ deploy_initialize()
     "please install rsync before continuing\n"\
     "  sm rsync package install"
 
-  variable_is_nonempty repository_url ||
+  [[ -n "${repository_url}" ]] ||
     error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
 
   versionedfs create \
@@ -51,7 +51,7 @@ hook()
   (( _hooks_flag )) || return 0
 
   # System
-  if file_is_nonempty "$shared_path/deploy/$_hook"
+  if ! file is empty "$shared_path/deploy/$_hook"
   then
     log_step "shared path ~ ${_hook}"
     hook_source "$shared_path/deploy/$_hook"
@@ -59,8 +59,8 @@ hook()
   fi
 
   # System, Environment specific
-  if variable_is_nonempty environment &&
-    file_is_executable "$shared_path/deploy/#{$environment}/${_hook}"
+  if [[ -n "${environment}" ]] &&
+    file is executable "$shared_path/deploy/#{$environment}/${_hook}"
   then
     log_step "shared ${environment} path ~ ${_hook}"
     hook_source "$shared_path/deploy/#{$environment}/${_hook}"
@@ -69,7 +69,7 @@ hook()
 
   # Project
   if paths exist "$shared_path/$project" &&
-    file_is_executable "$shared_path/$project/config/deploy/${_hook}"
+    file is executable "$shared_path/$project/config/deploy/${_hook}"
   then
     log_step "${project} ~ ${_hook}"
     hook_source "$shared_path/$project/config/deploy/${_hook}"
@@ -77,8 +77,8 @@ hook()
   fi
 
   # Project, environment
-  if variable_is_nonempty environment &&
-    file_is_executable "$shared_path/$project/config/deploy/$environment/${_hook}"
+  if [[ -n "${environment}" ]] &&
+    file is executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
     log_step "${project} ${environment} ~ ${_hook}"
     hook_source "$shared_path/$project/config/deploy/$environment/${_hook}"
