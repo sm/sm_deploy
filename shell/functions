@@ -2,7 +2,7 @@
 
 deploy_initialize()
 {
-  command_exists rsync ||
+  command exists rsync ||
     error "rsync is required in order to use the deploy extension, "\
     "please install rsync before continuing\n"\
     "  sm rsync package install"
