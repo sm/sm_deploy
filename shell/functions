@@ -89,7 +89,7 @@ hook()
 hook_source()
 {
   local _file="$1"
-  ( source_files "${_file}" )
+  ( files source "${_file}" )
 }
 
 before_step()
@@ -123,7 +123,7 @@ update_repository()
 
   case "${scm_type}" in
     git|github)
-      if file_exists ".gitmodules"
+      if files exists ".gitmodules"
       then
         log_step "Updating submodules" \
         git submodule init 2>/dev/null && git submodule update
@@ -194,7 +194,8 @@ release()
   # fi
 
   log_step "Releasing ${project} ${version}"
-  versionedfs add "${project_path}" name "${project}" version ${version}
+  versionedfs create path "${project_path}" strategy 'fhs' method 'link' activate 'newest'
+  versionedfs add path "${project_path}" name "${project}" version ${version}
   mv "$stage_path" "$release_path"
   log_step success
   paths enter "$release_path"
@@ -298,7 +299,7 @@ remove_releases()
 cleanup()
 {
   paths exist "$project_path/previous" || return 0 # No old releases
-  array_is_nonempty old_releases       || return 0 # No old releases
+  array is nonempty old_releases       || return 0 # No old releases
 
   paths enter "${project_path}/previous"
   remove_releases "${old_releases[@]}" ||
@@ -337,7 +338,7 @@ do_deploy()
   # This means that users may disable hooks by changing their
   # execute bit.
   #
-  command_exists rsync ||
+  command exists rsync ||
     error "The 'rsync' command was not found, please install rsync before using deploy."\
       "(Note that there is an rsync extension in the networking extension set)\n"\
       "root# sm sets install networking ; sm rsync package install"
@@ -354,14 +355,17 @@ do_deploy()
 
 deploy()
 {
-  for step in "${deploy_steps[@]}"
+  local _step
+  for _step in "${deploy_steps[@]}"
   do
-    step "${deploy_steps[@]}" >> "${deploy_log_path}/${_hook}" 2>&1
+    #step "${deploy_steps[@]}" >> "${deploy_log_path}/${_hook}" 2>&1
+    step "${_step}" >> "${deploy_log_path}/${_step}" 2>&1
   done
 }
 
 revert_on_error()
 {
+  trap "backtrace \"An errorr occured while reverting.\"" ERR
   local status=$?
   backtrace "A command has returned an not handled error code (${status})." no_exit 2>&3
   log "\nAn error occured, reverting...\n  for details check deploy.$timestamp.log\n" >&2
