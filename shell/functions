@@ -96,14 +96,14 @@ before_step()
 {
   local _name="$1"
   shift
-  hook "before_${_name}" "$@" >> "${deploy_log_path}/${_hook}" 2>&1
+  hook "before_${_name}" "$@" >> "${deploy_log_path}/before_${_name}" 2>&1
 }
 
 after_step()
 {
   local _name="$1"
   shift
-  hook "after_${_name}" "$@" >> "${deploy_log_path}/${_hook}" 2>&1
+  hook "after_${_name}" "$@" >> "${deploy_log_path}/after_${_name}" 2>&1
 }
 
 update()
