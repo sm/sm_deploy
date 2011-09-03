@@ -1,0 +1,42 @@
+#!/bin/sh
+
+command exists rsync ||
+  error "rsync is required in order to use the deploy extension, "\
+  "please install rsync before continuing\n"\
+  "  sm rsync package install"
+
+[[ -n "${repository_url}" ]] ||
+  error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
+
+versionedfs create \
+  path "${project_path}" strategy name method copy activate first
+
+timestamp="$(date +%m.%d.%YT%H:%M:%S)"
+
+true \
+  ${discard_path:="${project_path}/discard"} \
+  ${stage_path:="${project_path}/stage"} \
+  ${release_path:="${project_path}/active/${project}"} \
+  ${deploy_log_path:="${shared_path}/log/deploy/${timestamp}"} \
+  ${_hooks_flag:=1}
+
+paths create "$deploy_log_path"
+
+previous_releases=$( versionedfs versions path "${project_path}" name "${project}" )
+
+previous="${previous_releases[0]}"
+
+if (( ${#previous_releases[@]} > ${keep_releases:-3} ))
+then
+  old_releases=($(echo ${previous_releases[@]} | sort -r |
+  awk "NR > ${keep_releases:-3} { print \$0 }"
+  ))
+fi
+
+deploy_steps=(
+  update_repository stage_release
+  configure configure_db symlink
+  release cleanup record
+)
+
+export shared_path project_path stage_path release_path discard_path
