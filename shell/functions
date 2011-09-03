@@ -278,9 +278,6 @@ record()
 
 do_deploy()
 {
-  trap trace_filter RETURN
-  trace_filter deploy
-
   # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
   export log_file="${deploy_log_path}/deploy.log"
   exec 3>>"${log_file}"
