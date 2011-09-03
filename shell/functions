@@ -10,7 +10,7 @@ hook()
   if ! files are empty "$shared_path/deploy/$_hook"
   then
     log_step "shared path ~ ${_hook}"
-    hook_source "$shared_path/deploy/$_hook"
+    hook_source "$shared_path/deploy/$_hook" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
 
@@ -19,7 +19,7 @@ hook()
     files are executable "$shared_path/deploy/#{$environment}/${_hook}"
   then
     log_step "shared ${environment} path ~ ${_hook}"
-    hook_source "$shared_path/deploy/#{$environment}/${_hook}"
+    hook_source "$shared_path/deploy/#{$environment}/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
 
@@ -28,7 +28,7 @@ hook()
     files are executable "$shared_path/$project/config/deploy/${_hook}"
   then
     log_step "${project} ~ ${_hook}"
-    hook_source "$shared_path/$project/config/deploy/${_hook}"
+    hook_source "$shared_path/$project/config/deploy/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
 
@@ -37,7 +37,7 @@ hook()
     files are executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
     log_step "${project} ${environment} ~ ${_hook}"
-    hook_source "$shared_path/$project/config/deploy/$environment/${_hook}"
+    hook_source "$shared_path/$project/config/deploy/$environment/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
 }
@@ -52,14 +52,14 @@ before_step()
 {
   local _name="$1"
   shift
-  hook "before_${_name}" "$@" >> "${deploy_log_path}/before_${_name}" 2>&1
+  hook "before_${_name}" "$@"
 }
 
 after_step()
 {
   local _name="$1"
   shift
-  hook "after_${_name}" "$@" >> "${deploy_log_path}/after_${_name}" 2>&1
+  hook "after_${_name}" "$@"
 }
 
 update()
@@ -315,7 +315,8 @@ deploy()
   for _step in "${deploy_steps[@]}"
   do
     #step "${deploy_steps[@]}" >> "${deploy_log_path}/${_hook}" 2>&1
-    step "${_step}" >> "${deploy_log_path}/${_step}" 2>&1
+    step "${_step}" 2>&3
+    #step "${_step}" >> "${deploy_log_path}/${_step}" 2>&1
   done
 }
 
@@ -327,6 +328,11 @@ revert_on_error()
   log "\nAn error occured, reverting...\n  for details check deploy.$timestamp.log\n" >&2
   retreat >&2
   kill -s USR2 $APP_PID #to exit application not current subshell
+}
+
+revert()
+{
+  retreat
 }
 
 do_revert()
