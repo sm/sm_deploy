@@ -7,7 +7,7 @@ hook()
   (( _hooks_flag )) || return 0
 
   # System
-  if ! file is empty "$shared_path/deploy/$_hook"
+  if ! files are empty "$shared_path/deploy/$_hook"
   then
     log_step "shared path ~ ${_hook}"
     hook_source "$shared_path/deploy/$_hook"
@@ -16,7 +16,7 @@ hook()
 
   # System, Environment specific
   if [[ -n "${environment}" ]] &&
-    file is executable "$shared_path/deploy/#{$environment}/${_hook}"
+    files are executable "$shared_path/deploy/#{$environment}/${_hook}"
   then
     log_step "shared ${environment} path ~ ${_hook}"
     hook_source "$shared_path/deploy/#{$environment}/${_hook}"
@@ -25,7 +25,7 @@ hook()
 
   # Project
   if paths exist "$shared_path/$project" &&
-    file is executable "$shared_path/$project/config/deploy/${_hook}"
+    files are executable "$shared_path/$project/config/deploy/${_hook}"
   then
     log_step "${project} ~ ${_hook}"
     hook_source "$shared_path/$project/config/deploy/${_hook}"
@@ -34,7 +34,7 @@ hook()
 
   # Project, environment
   if [[ -n "${environment}" ]] &&
-    file is executable "$shared_path/$project/config/deploy/$environment/${_hook}"
+    files are executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
     log_step "${project} ${environment} ~ ${_hook}"
     hook_source "$shared_path/$project/config/deploy/$environment/${_hook}"
