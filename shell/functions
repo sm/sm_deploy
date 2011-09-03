@@ -195,7 +195,7 @@ configure()
   do
     _name="${_file##*/}"
 
-    log_step "Linking ${_name} (shared/config/${_name} => stage/config/${_name})" \
+    log_step "Linking ${_name} ($shared_path/config/${_name} => $stage_path/config/${_name})" \
       link --force "$shared_path/config/${_name}" "$stage_path/config/${_name}"
   done
 }
