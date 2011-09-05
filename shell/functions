@@ -150,14 +150,13 @@ release()
   # fi
 
   log_step "Releasing ${project} ${version}"
-  versionedfs create path "${project_path}" strategy 'fhs' method 'link' activate 'newest'
   #TODO: version detection failed !!!
   versionedfs add \
     path "${project_path}" \
     name "${project}" \
     version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")} \
     source "$stage_path"
-  #mv "$stage_path" "$release_path"
+  paths remove "$stage_path"
   log_step success
   paths enter "$release_path"
 }
