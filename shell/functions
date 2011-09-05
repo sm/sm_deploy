@@ -156,6 +156,10 @@ release()
     name "${project}" \
     version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")} \
     source "$stage_path"
+  versionedfs activate \
+    path "${project_path}" \
+    name "${project}" \
+    version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")}
   paths remove "$stage_path"
   log_step success
   paths enter "$release_path"
@@ -276,13 +280,13 @@ record()
   paths exist "${release_path}" || return 0 # Release failed, nothing to do...
 
   [[ -z "${revision:-}" ]] ||
-    write "${revision}" to "${release_path}/revision"
+    files write string "${revision}" to "${release_path}/revision"
 
   [[ -z "${branch:-}" ]] ||
-    write "${branch}" to "${release_path}/branch"
+    files write string "${branch}" to "${release_path}/branch"
 
   [[ -z "${repository_url}" ]] || # TODO: get this from .uri file.
-    write "$repository_url" to "${release_path}/repository_url"
+    files write string "$repository_url" to "${release_path}/repository_url"
 }
 
 do_deploy()
