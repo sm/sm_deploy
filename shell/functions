@@ -151,8 +151,13 @@ release()
 
   log_step "Releasing ${project} ${version}"
   versionedfs create path "${project_path}" strategy 'fhs' method 'link' activate 'newest'
-  versionedfs add path "${project_path}" name "${project}" version ${version}
-  mv "$stage_path" "$release_path"
+  #TODO: version detection failed !!!
+  versionedfs add \
+    path "${project_path}" \
+    name "${project}" \
+    version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")} \
+    source "$stage_path"
+  #mv "$stage_path" "$release_path"
   log_step success
   paths enter "$release_path"
 }
@@ -196,7 +201,7 @@ configure()
     _name="${_file##*/}"
 
     log_step "Linking ${_name} ($shared_path/config/${_name} => $stage_path/config/${_name})" \
-      link --force "$shared_path/config/${_name}" "$stage_path/config/${_name}"
+      files link symbolic force from "$shared_path/config/${_name}" to "$stage_path/config/${_name}"
   done
 }
 
@@ -211,7 +216,7 @@ configure_db()
   fi
 
   log_step "Linking db path (shared/db => stage/db)" \
-    link --force "$shared_path/db" "$stage_path/db"
+    files link symbolic force from "$shared_path/db" to "$stage_path/db"
 }
 
 
@@ -220,10 +225,15 @@ symlink()
   local _path _paths _prefix="${shared_path%/*}" \
     _shared_public_path="${shared_path}/public"
 
-  for _path in tmp log pids files
+  for _path in tmp log pids #files
   do
+    if paths exist "${stage_path}/${_path}"
+    then
+      log_step "Removing stage/${_path})" \
+        paths remove "${stage_path}/${_path}"
+    fi
     log_step "Linking ${_path} (shared/${_path} => stage/${_path})" \
-      link --force "${shared_path}/${_path}" to "${stage_path}/${_path}"
+      files link symbolic force from "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
   paths exist "$shared_path/public/" ||
@@ -236,7 +246,7 @@ symlink()
     _path="${_path#${_shared_public_path}/}"
 
     log_step "Linking path ${_path} (shared/public/${_path} => stage/public/${_path})" \
-      link --force "${_shared_public_path}/${_path}" to "${stage_path}/public/${_path}"
+      files link symbolic force from "${_shared_public_path}/${_path}" to "${stage_path}/public/${_path}"
   done
 }
 
