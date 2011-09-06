@@ -7,7 +7,7 @@ hook()
   (( _hooks_flag )) || return 0
 
   # System
-  if ! files are empty "${shared_path##${project_path}}/deploy/$_hook"
+  if ! files are empty "${shared_path}/deploy/$_hook"
   then
     log_step "${_hook} ~ shared"
     hook_source "$shared_path/deploy/$_hook" >> "${deploy_log_path}/${_hook}" 2>&1
@@ -168,7 +168,7 @@ fail_release()
 {
   if paths exist "$stage_path"
   then
-    log_step "Discarding current stage to $discard_path/$timestamp" \
+    log_step "discard ~ Discarding stage to $discard_path/$timestamp" \
       mv "$stage_path" "$discard_path/$timestamp"
   fi
 
