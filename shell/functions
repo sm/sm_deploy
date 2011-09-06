@@ -120,7 +120,7 @@ update_repository()
 
 }
 
-stage_release()
+stage()
 {
   log_step "Staging ${project} ${branch:-} ${revision:-} (${stage_path})" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
@@ -130,7 +130,7 @@ stage_release()
   paths create "$stage_path/public"
 }
 
-fail_stage_release()
+fail_stage()
 {
   if paths exist "${stage_path}"
   then
@@ -143,25 +143,24 @@ release()
 {
   local _prefix="${shared_path%/*}"
 
-  # if paths exist "$release_path"
-  # then
-  #   log_step "Moving asside previous release (${release_path#${_prefix}} => ${project_path#${_prefix}}/previous/$timestamp)" \
-  #     mv "$release_path" "$project_path/previous/$timestamp"
-  # fi
-
   log_step "Releasing ${project} ${version}"
   #TODO: version detection failed !!!
+
   versionedfs add \
     path "${project_path}" \
     name "${project}" \
     version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")} \
     source "$stage_path"
+
   versionedfs activate \
     path "${project_path}" \
     name "${project}" \
     version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")}
+
   paths remove "$stage_path"
+
   log_step success
+
   paths enter "$release_path"
 }
 
@@ -180,14 +179,13 @@ fail_release()
   # TODO: versionedfs last # switch to last version
   log_step "Rolling back to previous release $previous" \
     mv "$previous" "${release_path%/}"
-#  else
-#    log "No previous releases to revert to."
-#  fi
 }
 
 configure()
 {
-  local _name _file
+  local _name _file _path _paths _prefix="${shared_path%/*}" \
+    _shared_public_path="${shared_path}/public"
+
 
   if ! paths exist "$shared_path/config"
   then
@@ -206,27 +204,12 @@ configure()
     log_step "Linking ${_name} ($shared_path/config/${_name} => $stage_path/config/${_name})" \
       files link symbolic force from "$shared_path/config/${_name}" to "$stage_path/config/${_name}"
   done
-}
 
-configure_db()
-{
-  local _name _file
-
-  if ! paths exist "$shared_path/db"
+  if paths exist "$shared_path/db"
   then
-    log "No shared/db path found, skipping shared/db."
-    return 0
+    log_step "Linking db path (shared/db => stage/db)" \
+      files link symbolic force from "$shared_path/db" to "$stage_path/db"
   fi
-
-  log_step "Linking db path (shared/db => stage/db)" \
-    files link symbolic force from "$shared_path/db" to "$stage_path/db"
-}
-
-
-symlink()
-{
-  local _path _paths _prefix="${shared_path%/*}" \
-    _shared_public_path="${shared_path}/public"
 
   for _path in tmp log pids #files
   do
@@ -265,6 +248,31 @@ remove_releases()
   done
 }
 
+record()
+{ # TODO: What else could we record that would be useful?
+  paths exist "${release_path}" || return 0 # Release failed, nothing to do...
+
+  if [[ -n "${revision:-}" ]]
+  then
+    files write string "${revision}" to "${release_path}/revision"
+  fi
+
+  if [[ -n "${branch:-}" ]]
+  then
+    files write string "${branch}" to "${release_path}/branch"
+  fi
+
+  if [[ -n "${repository_url}" ]] # TODO: get this from the .uri file.
+  then
+    files write string "$repository_url" to "${release_path}/repository_url"
+  fi
+
+  if [[ -n "${timestamp:-}" ]]
+  then
+    files write string "${timestamp}" to "${release_path}/timestamp"
+  fi
+}
+
 cleanup()
 {
   paths exist "$project_path/previous" || return 0 # No old releases
@@ -273,20 +281,6 @@ cleanup()
   paths enter "${project_path}/previous"
   remove_releases "${old_releases[@]}" ||
     log "There was an error removing old releases."
-}
-
-record()
-{ # TODO: What else could we record that would be useful?
-  paths exist "${release_path}" || return 0 # Release failed, nothing to do...
-
-  [[ -z "${revision:-}" ]] ||
-    files write string "${revision}" to "${release_path}/revision"
-
-  [[ -z "${branch:-}" ]] ||
-    files write string "${branch}" to "${release_path}/branch"
-
-  [[ -z "${repository_url}" ]] || # TODO: get this from .uri file.
-    files write string "$repository_url" to "${release_path}/repository_url"
 }
 
 do_deploy()
@@ -304,10 +298,12 @@ do_deploy()
   # This means that users may disable hooks by changing their
   # execute bit.
   #
-  command exists rsync ||
+  if ! command exists rsync
+  then
     error "The 'rsync' command was not found, please install rsync before using deploy."\
       "(Note that there is an rsync extension in the networking extension set)\n"\
       "root# sm sets install networking ; sm rsync package install"
+  fi
 
   if paths exist "${release_path}"
   then # If release path already exists, start inside it.

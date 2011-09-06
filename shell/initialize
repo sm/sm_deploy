@@ -1,9 +1,11 @@
 #!/bin/sh
 
-command exists rsync ||
+if ! command exists rsync
+then
   error "rsync is required in order to use the deploy extension, "\
   "please install rsync before continuing\n"\
   "  sm rsync package install"
+fi
 
 [[ -n "${repository_url}" ]] ||
   error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
@@ -34,9 +36,12 @@ then
 fi
 
 deploy_steps=(
-  update_repository stage_release
-  configure configure_db symlink
-  release cleanup record
+  update_repository
+  stage
+  configure
+  release
+  record
+  cleanup
 )
 
 export shared_path project_path stage_path release_path discard_path
