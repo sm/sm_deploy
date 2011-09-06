@@ -7,18 +7,22 @@ hook()
   (( _hooks_flag )) || return 0
 
   # System
-  if ! files are empty "${shared_path}/deploy/$_hook"
+  if paths_exist "${shared_path}/deploy"
   then
-    log_step "${_hook} ~ ${shared_path##${project_path}/}/deploy/"
-    hook_source "$shared_path/deploy/$_hook" >> "${deploy_log_path}/${_hook}" 2>&1
-    log_step success
+    if paths exist "${shared_path}/deploy" &&
+      files are executable "${shared_path}/deploy/$_hook"
+    then
+      log_step "${_hook} ( ${shared_path##${project_path}/}/deploy/ )"
+      hook_source "${shared_path}/deploy/$_hook" >> "${deploy_log_path}/${_hook}" 2>&1
+      log_step success
+    fi
   fi
 
   # System, Environment specific
   if [[ -n "${environment}" ]] &&
     files are executable "$shared_path/deploy/#{$environment}/${_hook}"
   then
-    log_step "${_hook} ~ ${shared_path##${project_path}/}/deploy/${environment}/"
+    log_step "${_hook} ( ${shared_path##${project_path}/}/deploy/${environment}/ )"
     hook_source "$shared_path/deploy/#{$environment}/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
@@ -27,7 +31,7 @@ hook()
   if paths exist "$shared_path/$project" &&
     files are executable "$shared_path/$project/config/deploy/${_hook}"
   then
-    log_step "${_hook} ~ ${shared_path##${project_path}/}/${project}/config/deploy/"
+    log_step "${_hook} ( ${shared_path##${project_path}/}/${project}/config/deploy/ )"
     hook_source "$shared_path/$project/config/deploy/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
@@ -36,7 +40,7 @@ hook()
   if [[ -n "${environment}" ]] &&
     files are executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
-    log_step "${_hook} ~ ${shared_path##${project_path}/}/${project}/config/deploy/${environment}/"
+    log_step "${_hook} ( ${shared_path##${project_path}/}/${project}/config/deploy/${environment}/ )"
     hook_source "$shared_path/$project/config/deploy/$environment/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
@@ -69,7 +73,7 @@ update()
 
 update_repository()
 {
-  log_step "update_repository ~ ${shared_path##${project_path}/}/${project}"
+  log_step "update_repository ( ${shared_path##${project_path}/}/${project} )"
   fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
   log_step success
 
@@ -122,7 +126,7 @@ update_repository()
 
 stage()
 {
-  log_step "stage ~ staging ${project} ${branch:-} ${revision:-} (${stage_path##${project_path}/})" \
+  log_step "stage ~ staging ${project} ${branch:-} ${revision:-} ( ${stage_path##${project_path}/} )" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
 
   paths enter "$stage_path"
@@ -143,7 +147,6 @@ release()
 {
   local _prefix="${shared_path%/*}"
 
-  log_step "Releasing ${project} ${version}"
   #TODO: version detection failed !!!
 
   versionedfs add \
@@ -159,8 +162,6 @@ release()
 
   paths remove "$stage_path"
 
-  log_step success
-
   paths enter "$release_path"
 }
 
@@ -168,7 +169,7 @@ fail_release()
 {
   if paths exist "$stage_path"
   then
-    log_step "discard ~ Discarding stage to $discard_path/$timestamp" \
+    log_step "discard ~ Discarding stage ( $discard_path/$timestamp )" \
       mv "$stage_path" "$discard_path/$timestamp"
   fi
 
@@ -187,27 +188,21 @@ configure()
     _shared_public_path="${shared_path}/public"
 
 
-  if ! paths exist "$shared_path/config"
-  then
-    log "No shared config path found, skipping shared configuration."
-    return 0
-  fi
-
-  paths create "$stage_path/config"
+  paths exist "${shared_path}/config" || return 0
 
   paths enter "${shared_path}/config"
 
-  for _file in "$shared_path"/config/*
+  for _file in "${shared_path}"/config/*
   do
     _name="${_file##*/}"
 
-    log_step "  link ~ ${_name} (${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name})" \
+    log_step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )" \
       files link symbolic force from "$shared_path/config/${_name}" to "$stage_path/config/${_name}"
   done
 
   if paths exist "$shared_path/db"
   then
-    log_step "  link ~ db path (${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db)" \
+    log_step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )" \
       files link symbolic force from "$shared_path/db" to "$stage_path/db"
   fi
 
@@ -218,7 +213,7 @@ configure()
       log_step "Removing stage/${_path})" \
         paths remove "${stage_path}/${_path}"
     fi
-    log_step "  link ~ ${_path} (${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path})" \
+    log_step "  link ~ ${_path} ( ${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path} )" \
       files link symbolic force from "${shared_path}/${_path}" to "${stage_path}/${_path}"
   done
 
@@ -231,7 +226,7 @@ configure()
   do
     _path="${_path#${_shared_public_path}/}"
 
-    log_step "  link ~ public ${_path} (${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path})" \
+    log_step "  link ~ public ${_path} ( ${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path} )" \
       files link symbolic force from "${_shared_public_path}/${_path}" to "${stage_path}/public/${_path}"
   done
 }
