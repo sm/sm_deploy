@@ -7,7 +7,7 @@ hook()
   (( _hooks_flag )) || return 0
 
   # System
-  if paths_exist "${shared_path}/deploy"
+  if paths exist "${shared_path}/deploy"
   then
     if paths exist "${shared_path}/deploy" &&
       files are executable "${shared_path}/deploy/$_hook"
