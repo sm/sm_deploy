@@ -9,7 +9,7 @@ hook()
   # System
   if ! files are empty "${shared_path}/deploy/$_hook"
   then
-    log_step "${_hook} ~ shared"
+    log_step "${_hook} ~ ${shared_path##${project_path}/}/deploy/"
     hook_source "$shared_path/deploy/$_hook" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
@@ -18,7 +18,7 @@ hook()
   if [[ -n "${environment}" ]] &&
     files are executable "$shared_path/deploy/#{$environment}/${_hook}"
   then
-    log_step "${_hook} ~ shared ${environment}"
+    log_step "${_hook} ~ ${shared_path##${project_path}/}/deploy/${environment}/"
     hook_source "$shared_path/deploy/#{$environment}/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
@@ -27,7 +27,7 @@ hook()
   if paths exist "$shared_path/$project" &&
     files are executable "$shared_path/$project/config/deploy/${_hook}"
   then
-    log_step "${_hook} ~ ${project}"
+    log_step "${_hook} ~ ${shared_path##${project_path}/}/${project}/config/deploy/"
     hook_source "$shared_path/$project/config/deploy/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
@@ -36,7 +36,7 @@ hook()
   if [[ -n "${environment}" ]] &&
     files are executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
-    log_step "${_hook} ~ ${project} ${environment}"
+    log_step "${_hook} ~ ${shared_path##${project_path}/}/${project}/config/deploy/${environment}/"
     hook_source "$shared_path/$project/config/deploy/$environment/${_hook}" >> "${deploy_log_path}/${_hook}" 2>&1
     log_step success
   fi
