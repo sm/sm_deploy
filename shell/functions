@@ -178,7 +178,7 @@ fail_release()
     log_step success
   fi
 
-  if variable is nonempty "${initial_release}"
+  if variables are nonempty "${initial_release}"
   then
     paths exist "$initial_release" || return 0
   else
