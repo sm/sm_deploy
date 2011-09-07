@@ -173,17 +173,24 @@ fail_release()
 {
   if paths exist "$stage_path"
   then
-    log_step "discard ~ Discarding stage ( $discard_path/$timestamp )" \
-      mv "$stage_path" "$discard_path/$timestamp"
+    log_step "discard ~ Discarding stage ( $discard_path/$timestamp )"
+    paths move from "$stage_path" to "$discard_path/$timestamp"
+    log_step success
   fi
 
-  paths exist "$initial_release" || return 0
+  if variable is nonempty "${initial_release}"
+  then
+    paths exist "$initial_release" || return 0
+  else
+    return 0
+  fi
 
   paths create "$discard_path" "$deploy_log_path"
 
   # TODO: versionedfs last # switch to last version
-  log_step "Rolling back to previous release $previous" \
-    mv "$previous" "${release_path%/}"
+  log_step "Rolling back to previous release $previous"
+  paths move from "$previous" to "${release_path%/}"
+  log_step success
 }
 
 configure()
