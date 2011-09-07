@@ -200,14 +200,24 @@ configure()
   do
     _name="${_file##*/}"
 
-    log_step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )" \
-      files link symbolic force from "$shared_path/config/${_name}" to "$stage_path/config/${_name}"
+    log_step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )"
+
+    paths remove "$stage_path/config/${_name}"
+    files link symbolic \
+      from "$shared_path/config/${_name}" \
+      to "$stage_path/config/${_name}"
+
+    log_step success
   done
 
   if paths exist "$shared_path/db"
   then
-    log_step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )" \
-      files link symbolic force from "$shared_path/db" to "$stage_path/db"
+    log_step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )"
+    paths remove "$stage_path/db"
+    files link symbolic \
+      from "$shared_path/db" \
+      to "$stage_path/db"
+    log_step success
   fi
 
   for _path in tmp log pids #files
@@ -216,8 +226,13 @@ configure()
     then
       paths remove "${stage_path}/${_path}"
     fi
-    log_step "  link ~ ${_path} ( ${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path} )" \
-      files link symbolic force from "${shared_path}/${_path}" to "${stage_path}/${_path}"
+    log_step "  link ~ ${_path} ( ${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path} )"
+
+    paths remove "${stage_path}/${_path}"
+    files link symbolic \
+      from "${shared_path}/${_path}" \
+      to "${stage_path}/${_path}"
+    log_step success
   done
 
   paths exist "$shared_path/public/" ||
@@ -229,8 +244,12 @@ configure()
   do
     _path="${_path#${_shared_public_path}/}"
 
-    log_step "  link ~ public ${_path} ( ${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path} )" \
-      files link symbolic force from "${_shared_public_path}/${_path}" to "${stage_path}/public/${_path}"
+    log_step "  link ~ public ${_path} ( ${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path} )"
+
+    paths remove "${stage_path}/public/${_path}"
+    files link symbolic \
+      from "${_shared_public_path}/${_path}" \
+      to "${stage_path}/public/${_path}"
   done
 }
 
