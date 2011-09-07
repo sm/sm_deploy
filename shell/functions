@@ -174,7 +174,9 @@ fail_release()
   if paths exist "$stage_path"
   then
     log_step "discard ~ Discarding stage ( $discard_path/$timestamp )"
-    paths move from "$stage_path" to "$discard_path/$timestamp"
+    paths move \
+      from "$stage_path" \
+      to "$discard_path/$timestamp"
     log_step success
   fi
 
@@ -336,9 +338,9 @@ do_deploy()
     paths enter "$release_path"
   fi
 
+  log "  Deploy started at ${timestamp}"
   step deploy
-
-  log "  Deploy started at ${timestamp} and completed at $(date +%m.%d.%YT%H:%M:%S)"
+  log "  Deploy completed at $(date +%m.%d.%YT%H:%M:%S)"
 }
 
 deploy()
