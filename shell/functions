@@ -257,6 +257,8 @@ configure()
     files link symbolic \
       from "${_shared_public_path}/${_path}" \
       to "${stage_path}/public/${_path}"
+
+    log_step success
   done
 }
 
