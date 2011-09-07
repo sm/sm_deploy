@@ -85,43 +85,47 @@ update_repository()
     git|github)
       if files exists ".gitmodules"
       then
-        log_step "Updating submodules" \
-        git submodule init 2>/dev/null && git submodule update
+        log_step "Updating submodules"
+        git submodule init > ${deploy_log_path}/git-submodules.log 2>&1
+        git submodule update > ${deploy_log_path}/git-submodules.log 2>&1
+        log_step success
       fi
 
       if [[ -n "$revision" ]]
       then
-        log_step "Checking out revision '$revision'." \
-          git checkout $revision >/dev/null 2>&1
+        log_step "Checking out revision '$revision'."
+        git checkout $revision > ${deploy_log_path}/git-checkout.log 2>&1
+        log_step success
       else
         revision=$( git log --no-color -1 | awk '/commit/{print $2}')
         revision=${revision:0:7}
       fi
 
-      [[ -n "${branch}" ]] ||
+      if [[ -z "${branch}" ]]
+      then
         branch=$( git branch --no-color | awk '/^\* /{print $2}')
+      fi
       ;;
-
     hg)
       if [[ -n "$revision" ]]
       then
         # TODO: Find out if this is how it's done for hg ;)
-        log_step "Checking out revision '$revision'." \
-          hg update $branch $revision
+        log_step "Checking out revision '$revision'."
+        hg update $branch $revision  > ${deploy_log_path}/hg-update.log 2>&1
+        log_step success
       else
-        log_step "Updating branch '$branch'." \
-          hg update $branch
+        log_step "Updating branch '$branch'."
+        hg update $branch > ${deploy_log_path}/hg-update.log 2>&1
+        log_step success
       fi
       ;;
-
     svn)
       (( revision > 0 )) || return 0
-
-      log_step "Checking out revision $revision" \
-        svn checkout -r $revision
+      log_step "Checking out revision $revision"
+      svn checkout -r $revision > ${deploy_log_path}/svn-checkout.log 2>&1
+      log_step success
       ;;
   esac
-
 }
 
 stage()
