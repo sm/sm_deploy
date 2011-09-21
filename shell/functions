@@ -321,8 +321,8 @@ do_deploy()
   # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
   export log_file="${deploy_log_path}/deploy.log"
   touch "${log_file}"
-  exec 3>>"${log_file}"
-  exec &> >(tee -a "${log_file}")
+  #exec 3>>"${log_file}"
+  exec > >(tee -a "${log_file}") 2>&1
   # Error handling
   trap revert_on_error ERR
   trap revert_on_error ZERR
@@ -356,7 +356,7 @@ deploy()
   for _step in "${deploy_steps[@]}"
   do
     #step "${deploy_steps[@]}" >> "${deploy_log_path}/${_hook}" 2>&1
-    step "${_step}" 2>&3
+    step "${_step}" 2>>"${log_file}"
     #step "${_step}" >> "${deploy_log_path}/${_step}" 2>&1
   done
 }
@@ -367,7 +367,7 @@ revert_on_error()
   status=$?
   trap "backtrace \"An errorr occured while reverting.\"" ERR
   trap "backtrace \"An errorr occured while reverting.\"" ZERR
-  backtrace "A command has returned an not handled error code (${status})." no_exit 2>&3
+  backtrace "A command has returned an not handled error code (${status})." no_exit 2>"${log_file}"
   log "\nAn error occured, reverting...\n  for details check deploy.$timestamp.log\n" >&2
   retreat >&2
   kill -s USR2 $APP_PID #to exit application not current subshell
