@@ -1,8 +1,12 @@
 #!/bin/sh
 
+typeset status
+
 hook()
 {
-  local _hook="$1"
+  local _hook
+
+  _hook="$1"
 
   (( _hooks_flag )) || return 0
 
@@ -49,22 +53,17 @@ hook()
 
 hook_source()
 {
-  local _file="$1"
-  ( files source "${_file}" )
+  ( files source "$1" )
 }
 
 before_step()
 {
-  local _name="$1"
-  shift
-  hook "before_${_name}" "$@"
+  hook "before_$1" "$@"
 }
 
 after_step()
 {
-  local _name="$1"
-  shift
-  hook "after_${_name}" "$@"
+  hook "after_$1" "$@"
 }
 
 update()
@@ -83,7 +82,7 @@ update_repository()
   log_todo "  **** move revision handling to fetch_uri ****"
 
   case "${scm_type}" in
-    git|github)
+    (git|github)
       if files exists ".gitmodules"
       then
         log_step "Updating submodules"
@@ -107,7 +106,7 @@ update_repository()
         branch=$( git branch --no-color | awk '/^\* /{print $2}')
       fi
       ;;
-    hg)
+    (hg)
       if [[ -n "$revision" ]]
       then
         # TODO: Find out if this is how it's done for hg ;)
@@ -120,7 +119,7 @@ update_repository()
         log_step success
       fi
       ;;
-    svn)
+    (svn)
       (( revision > 0 )) || return 0
       log_step "Checking out revision $revision"
       svn checkout -r $revision > ${deploy_log_path}/svn-checkout.log 2>&1
@@ -198,9 +197,10 @@ fail_release()
 
 configure()
 {
-  local _name _file _path _paths _prefix="${shared_path%/*}" \
-    _shared_public_path="${shared_path}/public"
+  local _name _file _path _paths _prefix _shared_public_path
 
+  _prefix="${shared_path%/*}"
+  _shared_public_path="${shared_path}/public"
 
   paths exist "${shared_path}/config" || return 0
 
@@ -357,8 +357,8 @@ deploy()
 
 revert_on_error()
 {
+  status=$?
   trap "backtrace \"An errorr occured while reverting.\"" ERR
-  local status=$?
   backtrace "A command has returned an not handled error code (${status})." no_exit 2>&3
   log "\nAn error occured, reverting...\n  for details check deploy.$timestamp.log\n" >&2
   retreat >&2
