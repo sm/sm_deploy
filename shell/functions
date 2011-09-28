@@ -1,8 +1,7 @@
 #!/bin/sh
 
 set +o noclobber # Why yes, I did mean to clobber that file.
-
-typeset status
+typeset -g result
 
 hook()
 {
@@ -17,10 +16,10 @@ hook()
     if paths exist "${shared_path}/deploy" &&
       files are executable "${shared_path}/deploy/$_hook"
     then
-      log_step "${_hook} ( ${shared_path##${project_path}/}/deploy/ )"
+      log step "${_hook} ( ${shared_path##${project_path}/}/deploy/ )"
       hook_source "${shared_path}/deploy/$_hook" &> >(tee -a "${deploy_log_path}/${_hook}.log")
 
-      log_step success
+      log step success
     fi
   fi
 
@@ -28,27 +27,27 @@ hook()
   if [[ -n "${environment}" ]] &&
     files are executable "$shared_path/deploy/#{$environment}/${_hook}"
   then
-    log_step "${_hook} ( ${shared_path##${project_path}/}/deploy/${environment}/ )"
+    log step "${_hook} ( ${shared_path##${project_path}/}/deploy/${environment}/ )"
     hook_source "$shared_path/deploy/#{$environment}/${_hook}" &> >(tee -a "${deploy_log_path}/${_hook}.log")
-    log_step success
+    log step success
   fi
 
   # Project
   if paths exist "$shared_path/$project" &&
     files are executable "$shared_path/$project/config/deploy/${_hook}"
   then
-    log_step "${_hook} ( ${shared_path##${project_path}/}/${project}/config/deploy/ )"
+    log step "${_hook} ( ${shared_path##${project_path}/}/${project}/config/deploy/ )"
     hook_source "$shared_path/$project/config/deploy/${_hook}" &> >(tee -a "${deploy_log_path}/${_hook}.log")
-    log_step success
+    log step success
   fi
 
   # Project, environment
   if [[ -n "${environment}" ]] &&
     files are executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
-    log_step "${_hook} ( ${shared_path##${project_path}/}/${project}/config/deploy/${environment}/ )"
+    log step "${_hook} ( ${shared_path##${project_path}/}/${project}/config/deploy/${environment}/ )"
     hook_source "$shared_path/$project/config/deploy/$environment/${_hook}" &> >(tee -a "${deploy_log_path}/${_hook}.log")
-    log_step success
+    log step success
   fi
 }
 
@@ -74,29 +73,29 @@ update()
 
 update_repository()
 {
-  log_step "update_repository ( ${shared_path##${project_path}/}/${project} )"
+  log step "update_repository ( ${shared_path##${project_path}/}/${project} )"
   fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
-  log_step success
+  log step success
 
   paths enter "${shared_path}/${project}"
 
-  log_todo "  **** move revision handling to fetch_uri ****"
+  log " TODO: **** move revision handling to fetch_uri ****"
 
   case "${scm_type}" in
     (git|github)
       if files exists ".gitmodules"
       then
-        log_step "Updating submodules"
+        log step "Updating submodules"
         git submodule init > ${deploy_log_path}/git-submodules.log 2>&1
         git submodule update > ${deploy_log_path}/git-submodules.log 2>&1
-        log_step success
+        log step success
       fi
 
       if [[ -n "$revision" ]]
       then
-        log_step "Checking out revision '$revision'."
+        log step "Checking out revision '$revision'."
         git checkout $revision > ${deploy_log_path}/git-checkout.log 2>&1
-        log_step success
+        log step success
       else
         revision=$( git log --no-color -1 | awk '/commit/{print $2}')
         revision=${revision:0:7}
@@ -111,27 +110,27 @@ update_repository()
       if [[ -n "$revision" ]]
       then
         # TODO: Find out if this is how it's done for hg ;)
-        log_step "Checking out revision '$revision'."
+        log step "Checking out revision '$revision'."
         hg update $branch $revision  > ${deploy_log_path}/hg-update.log 2>&1
-        log_step success
+        log step success
       else
-        log_step "Updating branch '$branch'."
+        log step "Updating branch '$branch'."
         hg update $branch > ${deploy_log_path}/hg-update.log 2>&1
-        log_step success
+        log step success
       fi
       ;;
     (svn)
       (( revision > 0 )) || return 0
-      log_step "Checking out revision $revision"
+      log step "Checking out revision $revision"
       svn checkout -r $revision > ${deploy_log_path}/svn-checkout.log 2>&1
-      log_step success
+      log step success
       ;;
   esac
 }
 
 stage()
 {
-  log_step "stage ~ staging ${project} ${branch:-} ${revision:-} ( ${stage_path##${project_path}/} )" \
+  log step "stage ~ staging ${project} ${branch:-} ${revision:-} ( ${stage_path##${project_path}/} )" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
 
   paths enter "$stage_path"
@@ -143,7 +142,7 @@ fail_stage()
 {
   if paths exist "${stage_path}"
   then
-    log_step "stage fail ~ Removing stage release ( $stage_path )" \
+    log step "stage fail ~ Removing stage release ( $stage_path )" \
       paths remove "${stage_path}"
   fi
 }
@@ -175,11 +174,11 @@ fail_release()
 {
   if paths exist "$stage_path"
   then
-    log_step "discard ~ Discarding stage ( $discard_path/$timestamp )"
+    log step "discard ~ Discarding stage ( $discard_path/$timestamp )"
     paths move \
       from "$stage_path" \
       to "$discard_path/$timestamp"
-    log_step success
+    log step success
   fi
 
   if variables are nonempty "${initial_release}"
@@ -192,9 +191,9 @@ fail_release()
   paths create "$discard_path" "$deploy_log_path"
 
   # TODO: versionedfs last # switch to last version
-  log_step "Rolling back to previous release $previous"
+  log step "Rolling back to previous release $previous"
   paths move from "$previous" to "${release_path%/}"
-  log_step success
+  log step success
 }
 
 configure()
@@ -212,24 +211,24 @@ configure()
   do
     _name="${_file##*/}"
 
-    log_step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )"
+    log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )"
 
     paths remove "$stage_path/config/${_name}"
     files link symbolic \
       from "$shared_path/config/${_name}" \
       to "$stage_path/config/${_name}"
 
-    log_step success
+    log step success
   done
 
   if paths exist "$shared_path/db"
   then
-    log_step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )"
+    log step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )"
     paths remove "$stage_path/db"
     files link symbolic \
       from "$shared_path/db" \
       to "$stage_path/db"
-    log_step success
+    log step success
   fi
 
   for _path in tmp log pids #files
@@ -238,13 +237,13 @@ configure()
     then
       paths remove "${stage_path}/${_path}"
     fi
-    log_step "  link ~ ${_path} ( ${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path} )"
+    log step "  link ~ ${_path} ( ${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path} )"
 
     paths remove "${stage_path}/${_path}"
     files link symbolic \
       from "${shared_path}/${_path}" \
       to "${stage_path}/${_path}"
-    log_step success
+    log step success
   done
 
   paths exist "$shared_path/public/" ||
@@ -256,14 +255,14 @@ configure()
   do
     _path="${_path#${_shared_public_path}/}"
 
-    log_step "  link ~ public ${_path} ( ${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path} )"
+    log step "  link ~ public ${_path} ( ${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path} )"
 
     paths remove "${stage_path}/public/${_path}"
     files link symbolic \
       from "${_shared_public_path}/${_path}" \
       to "${stage_path}/public/${_path}"
 
-    log_step success
+    log step success
   done
 }
 
@@ -361,10 +360,10 @@ deploy()
 
 revert_on_error()
 {
-  status=$?
+  result=$?
   trap "backtrace \"An errorr occured while reverting.\"" ERR
   trap "backtrace \"An errorr occured while reverting.\"" ZERR
-  backtrace "A command has returned an not handled error code (${status})." no_exit 2>"${log_file}"
+  backtrace "A command has returned an not handled error code (${result})." no_exit 2>"${log_file}"
   log "\nAn error occured, reverting...\n  for details check deploy.$timestamp.log\n" >&2
   retreat >&2
   kill -s USR2 $APP_PID #to exit application not current subshell
