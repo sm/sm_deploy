@@ -5,7 +5,6 @@ typeset status
 hook()
 {
   local _hook
-
   _hook="$1"
 
   (( _hooks_flag )) || return 0
@@ -149,7 +148,8 @@ fail_stage()
 
 release()
 {
-  local _prefix="${shared_path%/*}"
+  typeset _prefix
+  _prefix="${shared_path%/*}"
 
   #TODO: version detection failed !!!
 
@@ -267,7 +267,7 @@ configure()
 
 remove_releases()
 {
-  local _release
+  typeset _release
   while (( $# > 0 ))
   do
     _release="${1}"
@@ -316,10 +316,12 @@ do_deploy()
 {
   # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
   export log_file="${deploy_log_path}/deploy.log"
-  exec 3>>"${log_file}"
-  exec &> >(tee -a "${log_file}")
+  touch "${log_file}"
+  #exec 3>>"${log_file}"
+  exec > >(tee -a "${log_file}") 2>&1
   # Error handling
   trap revert_on_error ERR
+  trap revert_on_error ZERR
 
   # This will run any deploy hooks that are called
   #   (by hook file name)
@@ -346,11 +348,11 @@ do_deploy()
 
 deploy()
 {
-  local _step
+  typeset _step
   for _step in "${deploy_steps[@]}"
   do
     #step "${deploy_steps[@]}" >> "${deploy_log_path}/${_hook}" 2>&1
-    step "${_step}" 2>&3
+    step "${_step}" 2>>"${log_file}"
     #step "${_step}" >> "${deploy_log_path}/${_step}" 2>&1
   done
 }
@@ -359,7 +361,8 @@ revert_on_error()
 {
   status=$?
   trap "backtrace \"An errorr occured while reverting.\"" ERR
-  backtrace "A command has returned an not handled error code (${status})." no_exit 2>&3
+  trap "backtrace \"An errorr occured while reverting.\"" ZERR
+  backtrace "A command has returned an not handled error code (${status})." no_exit 2>"${log_file}"
   log "\nAn error occured, reverting...\n  for details check deploy.$timestamp.log\n" >&2
   retreat >&2
   kill -s USR2 $APP_PID #to exit application not current subshell
@@ -375,4 +378,3 @@ do_revert()
   log "  Reverting ..."
   retreat "deploy" "${deploy_steps[@]}"
 }
-

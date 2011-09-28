@@ -1,5 +1,9 @@
 #!/bin/sh
 
+typeset -gx shared_path project_path stage_path release_path discard_path
+typeset -g previous_releases previous timestamp deploy_log_path _hooks_flag
+typeset -ga deploy_steps old_releases
+
 if ! command exists rsync
 then
   error "rsync is required in order to use the deploy extension, "\
@@ -43,5 +47,3 @@ deploy_steps=(
   record
   cleanup
 )
-
-export shared_path project_path stage_path release_path discard_path
