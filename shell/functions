@@ -1,7 +1,6 @@
 #!/bin/sh
 
 set +o noclobber # Why yes, I did mean to clobber that file.
-typeset -g result
 
 hook()
 {
@@ -24,11 +23,11 @@ hook()
   fi
 
   # System, Environment specific
-  if [[ -n "${environment}" ]] &&
-    files are executable "$shared_path/deploy/#{$environment}/${_hook}"
+  if [[ -n "${environment:-}" ]] &&
+    files are executable "$shared_path/deploy/${environment}/${_hook}"
   then
     log step "${_hook} ( ${shared_path##${project_path}/}/deploy/${environment}/ )"
-    hook_source "$shared_path/deploy/#{$environment}/${_hook}" &> >(tee -a "${deploy_log_path}/${_hook}.log")
+    hook_source "$shared_path/deploy/${environment}/${_hook}" &> >(tee -a "${deploy_log_path}/${_hook}.log")
     log step success
   fi
 
@@ -191,7 +190,7 @@ fail_release()
   paths create "$discard_path" "$deploy_log_path"
 
   # TODO: versionedfs last # switch to last version
-  log step "Rolling back to previous release $previous"
+  log step "Reverting to previous release $previous"
   paths move from "$previous" to "${release_path%/}"
   log step success
 }
@@ -315,6 +314,8 @@ cleanup()
 
 do_deploy()
 {
+  trace_filter "deploy" || set -o xtrace
+
   # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
   export log_file="${deploy_log_path}/deploy.log"
   touch "${log_file}"
@@ -352,9 +353,7 @@ deploy()
   typeset _step
   for _step in "${deploy_steps[@]}"
   do
-    #step "${deploy_steps[@]}" >> "${deploy_log_path}/${_hook}" 2>&1
-    step "${_step}" 2>>"${log_file}"
-    #step "${_step}" >> "${deploy_log_path}/${_step}" 2>&1
+    step "${_step}" &> >(tee -a "${log_file}")
   done
 }
 

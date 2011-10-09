@@ -1,7 +1,8 @@
 #!/bin/sh
 
 typeset -gx shared_path project_path stage_path release_path discard_path
-typeset -g previous_releases previous timestamp deploy_log_path _hooks_flag
+typeset -g previous_releases previous timestamp deploy_log_path _hooks_flag \
+  environment result
 typeset -ga deploy_steps old_releases
 
 if ! command exists rsync
@@ -20,6 +21,7 @@ versionedfs create \
 timestamp="$(date +%m.%d.%YT%H:%M:%S)"
 
 true \
+  ${environment:="development"} \
   ${discard_path:="${project_path}/discard"} \
   ${stage_path:="${project_path}/stage"} \
   ${release_path:="${project_path}/active/${project}"} \

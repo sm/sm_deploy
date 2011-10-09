@@ -34,6 +34,13 @@ Each hook is the name of a step listed above prefixed with either before_ or
 after_.  For example around steps a - f there is a 'before_deploy' and an
 'after_deploy'
 
+Hooks are only run if the hook file is executable, otherwise the file is
+considered disabled.
+
+Hooks are looked for and run from two places, shared then repository. First
+hooks are run from the shared_path/deploy/ directory and then from the
+shared_path/project_name/config/deploy/ directory.
+
 If you want to execute a task before the code is moved in place but after
 everything is setup in the staging area, use 'before_replace_current' hook.
 
@@ -45,10 +52,9 @@ If this is not the case please let me know right away and provide a gist of
 
 ## Prerequisites
 
-* git
+* git / subversion / mercurial (whichever the application's repository uses).
 * curl
 * rsync
-* subversion / mercurial (if the application's repository uses them).
 
 ## Resources
 
