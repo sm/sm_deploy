@@ -5,12 +5,13 @@ set +o noclobber # Why yes, I did mean to clobber that file.
 hook()
 {
   trace_filter "deploy" || set -o xtrace
+
   local _hook
   _hook="$1"
 
   (( _hooks_flag )) || return 0
 
-  # System
+  # System; Shared
   if path exists "${shared_path}/deploy"
   then
     if path exists "${shared_path}/deploy" &&
@@ -23,7 +24,7 @@ hook()
     fi
   fi
 
-  # System, Environment specific
+  # System; Shared, Environment
   if variable is nonempty environment &&
     file is executable "$shared_path/deploy/${environment}/${_hook}"
   then
@@ -32,7 +33,7 @@ hook()
     log step success
   fi
 
-  # Project
+  # Project; Repository
   if path exists "$shared_path/$project" &&
     file is executable "$shared_path/$project/config/deploy/${_hook}"
   then
@@ -41,7 +42,7 @@ hook()
     log step success
   fi
 
-  # Project, environment
+  # Project; Repository, Environment
   if variable is nonempty environment &&
     file is executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
@@ -53,7 +54,7 @@ hook()
 
 hook_source()
 {
-  ( files source "$1" )
+  ( source "$1" )
 }
 
 before_step()
@@ -90,44 +91,46 @@ update_repository()
       if files exists ".gitmodules"
       then
         log step "Updating submodules"
-        git submodule init > ${deploy_log_path}/git-submodules.log 2>&1
-        git submodule update > ${deploy_log_path}/git-submodules.log 2>&1
+        git submodule init > "${deploy_log_path}/git-submodules.log" 2>&1
+        git submodule update >> "${deploy_log_path}/git-submodules.log" 2>&1
         log step success
       fi
 
-      if [[ -n "$revision" ]]
+      if variable is nonempty revision
       then
         log step "Checking out revision '$revision'."
-        git checkout $revision > ${deploy_log_path}/git-checkout.log 2>&1
+        git checkout $revision > "${deploy_log_path}/git-checkout.log" 2>&1
         log step success
       else
         revision=$( git log --no-color -1 | awk '/commit/{print $2}')
         revision=${revision:0:7}
       fi
 
-      if [[ -z "${branch}" ]]
+      if variable is nonempty branch
       then
         branch=$( git branch --no-color | awk '/^\* /{print $2}')
       fi
       ;;
     (hg)
-      if [[ -n "$revision" ]]
+      if variable is nonempty revision
       then
         # TODO: Find out if this is how it's done for hg ;)
         log step "Checking out revision '$revision'."
-        hg update $branch $revision  > ${deploy_log_path}/hg-update.log 2>&1
+        hg update $branch $revision  > "${deploy_log_path}/hg-update.log" 2>&1
         log step success
       else
         log step "Updating branch '$branch'."
-        hg update $branch > ${deploy_log_path}/hg-update.log 2>&1
+        hg update $branch > "${deploy_log_path}/hg-update.log" 2>&1
         log step success
       fi
       ;;
     (svn)
-      (( revision > 0 )) || return 0
-      log step "Checking out revision $revision"
-      svn checkout -r $revision > ${deploy_log_path}/svn-checkout.log 2>&1
-      log step success
+      if variable is nonempty revision && (( revision > 0 ))
+      then
+        log step "Checking out revision $revision"
+        svn checkout -r $revision > "${deploy_log_path}/svn-checkout.log" 2>&1
+        log step success
+      fi
       ;;
   esac
 }
@@ -136,20 +139,21 @@ stage()
 {
   trace_filter "deploy" || set -o xtrace
 
-  log step "stage ~ staging ${project} ${branch:-} ${revision:-} ( ${stage_path##${project_path}/} )" \
-    rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
+  log step "stage ~ staging ${project} ${branch:-} ${revision:-} ( ${stage_path##${project_path}/} )"
+  rsync -avg --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}" > "${deploy_log_path}/stage-rsync.log" 2>&1
+  log step success
 
-  paths enter "$stage_path"
-  paths create "$stage_path/public"
+  path enter "$stage_path"
+  path create "$stage_path/public"
 }
 
 fail_stage()
 {
   trace_filter "deploy" || set -o xtrace
 
-  if paths exist "${stage_path}"
+  if path exists "${stage_path}"
   then
-    log step "stage fail ~ Removing stage release ( $stage_path )" \
+    log step "stage fail ~ Removing staged release ( $stage_path )" \
       paths remove "${stage_path}"
   fi
 }
