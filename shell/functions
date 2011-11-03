@@ -4,16 +4,17 @@ set +o noclobber # Why yes, I did mean to clobber that file.
 
 hook()
 {
+  trace_filter "deploy" || set -o xtrace
   local _hook
   _hook="$1"
 
   (( _hooks_flag )) || return 0
 
   # System
-  if paths exist "${shared_path}/deploy"
+  if path exists "${shared_path}/deploy"
   then
-    if paths exist "${shared_path}/deploy" &&
-      files are executable "${shared_path}/deploy/$_hook"
+    if path exists "${shared_path}/deploy" &&
+      file is executable "${shared_path}/deploy/$_hook"
     then
       log step "${_hook} ( ${shared_path##${project_path}/}/deploy/ )"
       hook_source "${shared_path}/deploy/$_hook" &> >(tee -a "${deploy_log_path}/${_hook}.log")
@@ -23,8 +24,8 @@ hook()
   fi
 
   # System, Environment specific
-  if [[ -n "${environment:-}" ]] &&
-    files are executable "$shared_path/deploy/${environment}/${_hook}"
+  if variable is nonempty environment &&
+    file is executable "$shared_path/deploy/${environment}/${_hook}"
   then
     log step "${_hook} ( ${shared_path##${project_path}/}/deploy/${environment}/ )"
     hook_source "$shared_path/deploy/${environment}/${_hook}" &> >(tee -a "${deploy_log_path}/${_hook}.log")
@@ -32,8 +33,8 @@ hook()
   fi
 
   # Project
-  if paths exist "$shared_path/$project" &&
-    files are executable "$shared_path/$project/config/deploy/${_hook}"
+  if path exists "$shared_path/$project" &&
+    file is executable "$shared_path/$project/config/deploy/${_hook}"
   then
     log step "${_hook} ( ${shared_path##${project_path}/}/${project}/config/deploy/ )"
     hook_source "$shared_path/$project/config/deploy/${_hook}" &> >(tee -a "${deploy_log_path}/${_hook}.log")
@@ -41,8 +42,8 @@ hook()
   fi
 
   # Project, environment
-  if [[ -n "${environment}" ]] &&
-    files are executable "$shared_path/$project/config/deploy/$environment/${_hook}"
+  if variable is nonempty environment &&
+    file is executable "$shared_path/$project/config/deploy/$environment/${_hook}"
   then
     log step "${_hook} ( ${shared_path##${project_path}/}/${project}/config/deploy/${environment}/ )"
     hook_source "$shared_path/$project/config/deploy/$environment/${_hook}" &> >(tee -a "${deploy_log_path}/${_hook}.log")
@@ -67,16 +68,20 @@ after_step()
 
 update()
 {
+  trace_filter "deploy" || set -o xtrace
+
   update_repository && release
 }
 
 update_repository()
 {
+  trace_filter "deploy" || set -o xtrace
+
   log step "update_repository ( ${shared_path##${project_path}/}/${project} )"
   fetch_uri "$repository_url" "$shared_path/$project" "${branch:-}"
   log step success
 
-  paths enter "${shared_path}/${project}"
+  path enter "${shared_path}/${project}"
 
   log " TODO: **** move revision handling to fetch_uri ****"
 
@@ -129,16 +134,19 @@ update_repository()
 
 stage()
 {
+  trace_filter "deploy" || set -o xtrace
+
   log step "stage ~ staging ${project} ${branch:-} ${revision:-} ( ${stage_path##${project_path}/} )" \
     rsync -ag --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}"
 
   paths enter "$stage_path"
-
   paths create "$stage_path/public"
 }
 
 fail_stage()
 {
+  trace_filter "deploy" || set -o xtrace
+
   if paths exist "${stage_path}"
   then
     log step "stage fail ~ Removing stage release ( $stage_path )" \
@@ -148,6 +156,8 @@ fail_stage()
 
 release()
 {
+  trace_filter "deploy" || set -o xtrace
+
   typeset _prefix
   _prefix="${shared_path%/*}"
 
@@ -164,47 +174,26 @@ release()
     name "${project}" \
     version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")}
 
-  paths remove "$stage_path"
+  path remove "$stage_path"
 
-  paths enter "$release_path"
-}
-
-fail_release()
-{
-  if paths exist "$stage_path"
-  then
-    log step "discard ~ Discarding stage ( $discard_path/$timestamp )"
-    paths move \
-      from "$stage_path" \
-      to "$discard_path/$timestamp"
-    log step success
-  fi
-
-  if variables are nonempty "${initial_release}"
-  then
-    paths exist "$initial_release" || return 0
-  else
-    return 0
-  fi
-
-  paths create "$discard_path" "$deploy_log_path"
-
-  # TODO: versionedfs last # switch to last version
-  log step "Reverting to previous release $previous"
-  paths move from "$previous" to "${release_path%/}"
-  log step success
+  path enter "$release_path"
 }
 
 configure()
 {
+  trace_filter "deploy" || set -o xtrace
+
   local _name _file _path _paths _prefix _shared_public_path
 
   _prefix="${shared_path%/*}"
   _shared_public_path="${shared_path}/public"
 
-  paths exist "${shared_path}/config" || return 0
+  if ! path exists "${shared_path}/config"
+  then
+    return 0
+  fi
 
-  paths enter "${shared_path}/config"
+  path enter "${shared_path}/config"
 
   for _file in "${shared_path}"/config/*
   do
@@ -212,41 +201,42 @@ configure()
 
     log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )"
 
-    paths remove "$stage_path/config/${_name}"
-    files link symbolic \
+    path remove "$stage_path/config/${_name}"
+
+    file link symbolic \
       from "$shared_path/config/${_name}" \
       to "$stage_path/config/${_name}"
 
     log step success
   done
 
-  if paths exist "$shared_path/db"
+  if path exists "$shared_path/db"
   then
     log step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )"
-    paths remove "$stage_path/db"
-    files link symbolic \
-      from "$shared_path/db" \
-      to "$stage_path/db"
+    path remove "$stage_path/db"
+    file link symbolic from "$shared_path/db" to "$stage_path/db"
     log step success
   fi
 
   for _path in tmp log pids #files
   do
-    if paths exist "${stage_path}/${_path}"
+    if path exists "${stage_path}/${_path}"
     then
-      paths remove "${stage_path}/${_path}"
+      path remove "${stage_path}/${_path}"
     fi
     log step "  link ~ ${_path} ( ${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path} )"
 
-    paths remove "${stage_path}/${_path}"
-    files link symbolic \
+    path remove "${stage_path}/${_path}"
+    file link symbolic \
       from "${shared_path}/${_path}" \
       to "${stage_path}/${_path}"
     log step success
   done
 
-  paths exist "$shared_path/public/" ||
-    error "\nPlease run the folloing command first and then retry:\n\tsm rails setup"
+  if ! path exists "$shared_path/public/"
+  then
+    log error "\nPlease run the folloing command first and then retry:\n\tsm rails setup"
+  fi
 
   _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
 
@@ -256,8 +246,8 @@ configure()
 
     log step "  link ~ public ${_path} ( ${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path} )"
 
-    paths remove "${stage_path}/public/${_path}"
-    files link symbolic \
+    path remove "${stage_path}/public/${_path}"
+    file link symbolic \
       from "${_shared_public_path}/${_path}" \
       to "${stage_path}/public/${_path}"
 
@@ -265,51 +255,62 @@ configure()
   done
 }
 
-remove_releases()
-{
-  typeset _release
-  while (( $# > 0 ))
-  do
-    _release="${1}"
-    shift
-    log "Removing old release ${_release}"
-    paths remove "${_release}"
-  done
-}
-
 record()
 { # TODO: What else could we record that would be useful?
+  trace_filter "deploy" || set -o xtrace
   paths exist "${release_path}" || return 0 # Release failed, nothing to do...
 
-  if [[ -n "${revision:-}" ]]
+  if variable is nonempty revision
   then
-    files write string "${revision}" to "${release_path}/revision"
+    file write string "${revision}" to "${release_path}/revision"
   fi
 
-  if [[ -n "${branch:-}" ]]
+  if variable is nonempty branch
   then
-    files write string "${branch}" to "${release_path}/branch"
+    file write string "${branch}" to "${release_path}/branch"
   fi
 
-  if [[ -n "${repository_url}" ]] # TODO: get this from the .uri file.
+  if variable is nonempty repository_url # TODO: get this from the .uri file.
   then
-    files write string "$repository_url" to "${release_path}/repository_url"
+    file write string "$repository_url" to "${release_path}/repository_url"
   fi
 
-  if [[ -n "${timestamp:-}" ]]
+  if variable is nonempty timestamp
   then
     files write string "${timestamp}" to "${release_path}/timestamp"
   fi
 }
 
+remove_releases()
+{
+  trace_filter "deploy" || set -o xtrace
+
+  local _release
+
+  path enter "${versions_path}"
+
+  while (( $# > 0 ))
+  do
+    _release="${1/:/\/}"
+    shift
+    log "Removing old release ${_release}"
+    path remove "${_release}"
+  done
+}
+
 cleanup()
 {
-  paths exist "$project_path/previous" || return 0 # No old releases
-  array is nonempty old_releases       || return 0 # No old releases
+  trace_filter "deploy" || set -o xtrace
 
-  paths enter "${project_path}/previous"
-  remove_releases "${old_releases[@]}" ||
-    log "There was an error removing old releases."
+  if array is empty old_releases || ! path exists "${versions_path}"
+  then
+    return 0 # No old releases
+  fi
+
+  if ! remove_releases "${old_releases[@]}"
+  then
+    log warn "There was an error removing old releases (${old_releases[*]})."
+  fi
 }
 
 do_deploy()
@@ -338,9 +339,9 @@ do_deploy()
       "root# sm sets install networking ; sm rsync package install"
   fi
 
-  if paths exist "${release_path}"
+  if path exists "${release_path}"
   then # If release path already exists, start inside it.
-    paths enter "$release_path"
+    path enter "$release_path"
   fi
 
   log "  Deploy started at ${timestamp}"
@@ -363,7 +364,7 @@ revert_on_error()
   trap "backtrace \"An errorr occured while reverting.\"" ERR
   trap "backtrace \"An errorr occured while reverting.\"" ZERR
   backtrace "A command has returned an not handled error code (${result})." no_exit 2>"${log_file}"
-  log "\nAn error occured, reverting...\n  for details check deploy.$timestamp.log\n" >&2
+  log "\nAn error occured, reverting...\n  for details check the logfiles in ${deploy_log_path}/\n" >&2
   retreat >&2
   kill -s USR2 $APP_PID #to exit application not current subshell
 }
@@ -378,3 +379,30 @@ do_revert()
   log "  Reverting ..."
   retreat "deploy" "${deploy_steps[@]}"
 }
+
+fail_release()
+{
+  trace_filter "deploy" || set -o xtrace
+
+  if path exists "$stage_path"
+  then
+    log step "discard ~ Discarding stage ( $discard_path/$timestamp )"
+    path move from "$stage_path" to "$discard_path/$timestamp"
+    log step success
+  fi
+
+  if variable is nonempty initial_release
+  then
+    paths exist "$initial_release" || return 0
+  else
+    return 0
+  fi
+
+  paths create "$discard_path" "$deploy_log_path"
+
+  # TODO: versionedfs last # switch to last version
+  log step "Reverting to previous release $previous"
+  path move from "$previous" to "${release_path%/}"
+  log step success
+}
+

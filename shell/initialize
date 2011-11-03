@@ -1,8 +1,11 @@
 #!/bin/sh
 
-typeset -gx shared_path project_path stage_path release_path discard_path
-typeset -g previous_releases previous timestamp deploy_log_path _hooks_flag \
-  environment result
+typeset -gx shared_path project_path stage_path release_path discard_path \
+  versions_path
+
+typeset -g previous_releases previous timestamp deploy_log_path \
+  _hooks_flag environment result
+
 typeset -ga deploy_steps old_releases
 
 if ! command exists rsync
@@ -25,6 +28,7 @@ true \
   ${discard_path:="${project_path}/discard"} \
   ${stage_path:="${project_path}/stage"} \
   ${release_path:="${project_path}/active/${project}"} \
+  ${versions_path:="${project_path}/versions/${project}"} \
   ${deploy_log_path:="${shared_path}/log/deploy/${timestamp}"} \
   ${_hooks_flag:=1}
 
@@ -34,7 +38,7 @@ previous_releases=$( versionedfs versions path "${project_path}" name "${project
 
 previous="${previous_releases[0]}"
 
-if (( ${#previous_releases[@]} > ${keep_releases:-3} ))
+if (( $(array length previous_releases) > ${keep_releases:-3} ))
 then
   old_releases=($(echo ${previous_releases[@]} | sort -r |
   awk "NR > ${keep_releases:-3} { print \$0 }"
