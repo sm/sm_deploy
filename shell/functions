@@ -54,7 +54,7 @@ hook()
 
 hook_source()
 {
-  ( source "$1" )
+  ( set -v ; source "$1" )
 }
 
 before_step()
