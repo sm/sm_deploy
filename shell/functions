@@ -321,6 +321,8 @@ do_deploy()
 {
   trace_filter "deploy" || set -o xtrace
 
+  PATH="./bin:$PATH" # Account for project-specific command overrides.
+
   # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
   export log_file="${deploy_log_path}/deploy.log"
   touch "${log_file}"
