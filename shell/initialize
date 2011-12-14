@@ -1,7 +1,7 @@
 #!/bin/sh
 
 typeset -gx shared_path project_path stage_path release_path discard_path \
-  versions_path
+  versions_path log_file
 
 typeset -g previous_releases previous timestamp deploy_log_path \
   _hooks_flag environment result
@@ -10,18 +10,23 @@ typeset -ga deploy_steps old_releases
 
 if ! command exists rsync
 then
-  error "rsync is required in order to use the deploy extension, "\
+  log error "rsync is required in order to use the deploy extension, "\
   "please install rsync before continuing\n"\
   "  sm rsync package install"
 fi
 
-[[ -n "${repository_url}" ]] ||
-  error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
-
-versionedfs create \
-  path "${project_path}" strategy name method copy activate first
+if variable is empty
+then
+  log error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
+fi
 
 timestamp="$(date +%m.%d.%YT%H:%M:%S)"
+
+versionedfs create \
+  path "${project_path}" \
+  strategy name \
+  method copy \
+  activate first
 
 true \
   ${environment:="development"} \
@@ -34,14 +39,18 @@ true \
 
 paths create "$deploy_log_path"
 
+includes api/array
+project_path=$HOME
+project=todo
+keep_releases=3
 previous_releases=$( versionedfs versions path "${project_path}" name "${project}" )
 
-previous="${previous_releases[0]}"
+array first "previous_releases" as "previous"
 
 if (( $(array length previous_releases) > ${keep_releases:-3} ))
 then
-  old_releases=($(echo ${previous_releases[@]} | sort -r |
-  awk "NR > ${keep_releases:-3} { print \$0 }"
+  old_releases=($(
+  echo ${previous_releases} | sort -r | awk "NR > ${keep_releases:-3}"
   ))
 fi
 

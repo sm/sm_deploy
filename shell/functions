@@ -324,7 +324,7 @@ do_deploy()
   PATH="./bin:$PATH" # Account for project-specific command overrides.
 
   # Logging (http://nakedape.cc/wiki/ShellHacks 1.6.1, 1.7, 1.11)
-  export log_file="${deploy_log_path}/deploy.log"
+  log_file="${deploy_log_path}/deploy.log"
   touch "${log_file}"
   #exec 3>>"${log_file}"
   exec > >(tee -a "${log_file}") 2>&1
