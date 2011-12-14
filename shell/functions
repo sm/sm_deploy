@@ -140,7 +140,8 @@ stage()
   trace_filter "deploy" || set -o xtrace
 
   log step "stage ~ staging ${project} ${branch:-} ${revision:-} ( ${stage_path##${project_path}/} )"
-  rsync -avg --exclude=".${scm_type}/" "${shared_path}/${project}/" "${stage_path}" > "${deploy_log_path}/stage-rsync.log" 2>&1
+  rsync -avg --exclude=".${scm_type}/" "${shared_path}/${project}/" \
+    "${stage_path}" > "${deploy_log_path}/stage-rsync.log" 2>&1
   log step success
 
   path enter "$stage_path"
@@ -154,7 +155,7 @@ fail_stage()
   if path exists "${stage_path}"
   then
     log step "stage fail ~ Removing staged release ( $stage_path )" \
-      paths remove "${stage_path}"
+      path move from "${stage_path}" to "${discard_path}/${timestamp}"
   fi
 }
 
