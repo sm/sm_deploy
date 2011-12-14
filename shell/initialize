@@ -15,7 +15,7 @@ then
   "  sm rsync package install"
 fi
 
-if variable is empty
+if variable is empty "repository_url"
 then
   log error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
 fi
@@ -39,10 +39,6 @@ true \
 
 paths create "$deploy_log_path"
 
-includes api/array
-project_path=$HOME
-project=todo
-keep_releases=3
 previous_releases=$( versionedfs versions path "${project_path}" name "${project}" )
 
 array first "previous_releases" as "previous"
