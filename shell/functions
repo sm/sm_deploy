@@ -295,7 +295,7 @@ remove_releases()
 
   while (( $# > 0 ))
   do
-    _release="${1/:/\/}"
+    _release="${1#*:}"
     shift
     log "Removing old release ${_release}"
     versionedfs remove \
