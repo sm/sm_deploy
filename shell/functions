@@ -298,7 +298,10 @@ remove_releases()
     _release="${1/:/\/}"
     shift
     log "Removing old release ${_release}"
-    path remove "${_release}"
+    versionedfs remove \
+      path "${project_path}" \
+      name "${project}" \
+      version ${_release}
   done
 }
 
