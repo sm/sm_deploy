@@ -22,7 +22,7 @@ then
   log error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
 fi
 
-timestamp="$(date +%m.%d.%YT%H:%M:%S)"
+timestamp="$(date +"%Y-%m-%dT%H%M%S")"
 
 versionedfs create \
   path "${project_path}" \

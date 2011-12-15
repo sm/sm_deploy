@@ -174,13 +174,13 @@ release()
   versionedfs add \
     path "${project_path}" \
     name "${project}" \
-    version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")} \
+    version ${version:=${timestamp}} \
     source "$stage_path"
 
   versionedfs activate \
     path "${project_path}" \
     name "${project}" \
-    version ${version:=$(date +"%Y-%m-%dT%H:%M:%S")}
+    version ${version:=${timestamp}}
 
   path remove "$stage_path"
 
@@ -360,7 +360,7 @@ do_deploy()
 
   log "  Deploy started at ${timestamp}"
   step deploy
-  log "  Deploy completed at $(date +%m.%d.%YT%H:%M:%S)"
+  log "  Deploy completed at $(date +"%Y-%m-%dT%H%M%S")"
 }
 
 deploy()
