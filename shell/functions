@@ -54,16 +54,19 @@ hook()
 
 hook_source()
 {
+  trace_filter "deploy" || set -o xtrace
   ( set -v ; source "$1" )
 }
 
 before_step()
 {
+  trace_filter "deploy" || set -o xtrace
   hook "before_$1" "$@"
 }
 
 after_step()
 {
+  trace_filter "deploy" || set -o xtrace
   hook "after_$1" "$@"
 }
 
@@ -263,6 +266,7 @@ configure()
 record()
 { # TODO: What else could we record that would be useful?
   trace_filter "deploy" || set -o xtrace
+
   paths exist "${release_path}" || return 0 # Release failed, nothing to do...
 
   if variable is nonempty revision
@@ -361,6 +365,8 @@ do_deploy()
 
 deploy()
 {
+  trace_filter "deploy" || set -o xtrace
+
   typeset _step
   for _step in "${deploy_steps[@]}"
   do
@@ -370,6 +376,8 @@ deploy()
 
 revert_on_error()
 {
+  trace_filter "deploy" || set -o xtrace
+
   result=$?
   trap "backtrace \"An errorr occured while reverting.\"" ERR
   trap "backtrace \"An errorr occured while reverting.\"" ZERR
@@ -386,6 +394,8 @@ revert()
 
 do_revert()
 {
+  trace_filter "deploy" || set -o xtrace
+
   log "  Reverting ..."
   retreat "deploy" "${deploy_steps[@]}"
 }

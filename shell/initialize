@@ -1,5 +1,7 @@
 #!/bin/sh
 
+trace_filter "deploy" || set -o xtrace
+
 typeset -gx shared_path project_path stage_path release_path discard_path \
   versions_path log_file
 
