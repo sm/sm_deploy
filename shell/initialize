@@ -3,7 +3,7 @@
 trace_filter "deploy" || set -o xtrace
 
 typeset -gx shared_path project_path stage_path release_path discard_path \
-  versions_path log_file
+  versions_path log_file timestamp
 
 typeset -g previous_releases previous deploy_timestamp deploy_log_path \
   _hooks_flag environment result
@@ -23,6 +23,7 @@ then
 fi
 
 deploy_timestamp="$(date +"%Y-%m-%dT%H%M%S")"
+timestamp="${deploy_timestamp}" # This one is exported.
 
 versionedfs create \
   path "${project_path}" \
