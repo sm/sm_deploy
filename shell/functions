@@ -158,7 +158,7 @@ fail_stage()
   if path exists "${stage_path}"
   then
     log step "stage fail ~ Removing staged release ( $stage_path )" \
-      path move from "${stage_path}" to "${discard_path}/${timestamp}"
+      path move from "${stage_path}" to "${discard_path}/${deploy_timestamp}"
   fi
 }
 
@@ -174,13 +174,13 @@ release()
   versionedfs add \
     path "${project_path}" \
     name "${project}" \
-    version ${version:=${timestamp}} \
+    version ${version:=${deploy_timestamp}} \
     source "$stage_path"
 
   versionedfs activate \
     path "${project_path}" \
     name "${project}" \
-    version ${version:=${timestamp}}
+    version ${version:=${deploy_timestamp}}
 
   path remove "$stage_path"
 
@@ -284,9 +284,9 @@ record()
     file write string "$repository_url" to "${release_path}/repository_url"
   fi
 
-  if variable is nonempty timestamp
+  if variable is nonempty deploy_timestamp
   then
-    files write string "${timestamp}" to "${release_path}/timestamp"
+    files write string "${deploy_timestamp}" to "${release_path}/timestamp"
   fi
 }
 
@@ -358,7 +358,7 @@ do_deploy()
     path enter "$release_path"
   fi
 
-  log "  Deploy started at ${timestamp}"
+  log "  Deploy started at ${deploy_timestamp}"
   step deploy
   log "  Deploy completed at $(date +"%Y-%m-%dT%H%M%S")"
 }
@@ -406,8 +406,8 @@ fail_release()
 
   if path exists "$stage_path"
   then
-    log step "discard ~ Discarding stage ( $discard_path/$timestamp )"
-    path move from "$stage_path" to "$discard_path/$timestamp"
+    log step "discard ~ Discarding stage ( $discard_path/$deploy_timestamp )"
+    path move from "$stage_path" to "$discard_path/$deploy_timestamp"
     log step success
   fi
 

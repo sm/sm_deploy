@@ -5,7 +5,7 @@ trace_filter "deploy" || set -o xtrace
 typeset -gx shared_path project_path stage_path release_path discard_path \
   versions_path log_file
 
-typeset -g previous_releases previous timestamp deploy_log_path \
+typeset -g previous_releases previous deploy_timestamp deploy_log_path \
   _hooks_flag environment result
 
 typeset -ga deploy_steps old_releases
@@ -22,7 +22,7 @@ then
   log error "The project's repository_url must be set in configuration files (eg: ~/.smrc)"
 fi
 
-timestamp="$(date +"%Y-%m-%dT%H%M%S")"
+deploy_timestamp="$(date +"%Y-%m-%dT%H%M%S")"
 
 versionedfs create \
   path "${project_path}" \
@@ -36,7 +36,7 @@ true \
   ${stage_path:="${project_path}/stage"} \
   ${release_path:="${project_path}/active/${project}"} \
   ${versions_path:="${project_path}/versions/${project}"} \
-  ${deploy_log_path:="${shared_path}/log/deploy/${timestamp}"} \
+  ${deploy_log_path:="${shared_path}/log/deploy/${deploy_timestamp}"} \
   ${_hooks_flag:=1}
 
 paths create "$deploy_log_path"
