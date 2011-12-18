@@ -105,8 +105,7 @@ update_repository()
         git checkout $revision > "${deploy_log_path}/git-checkout.log" 2>&1
         log step success
       else
-        revision=$( git log --no-color -1 | awk '/commit/{print $2}')
-        revision=${revision:0:7}
+        revision=$( git log --no-color -1 | awk '/commit/{print $2}' | cut -b -7)
       fi
 
       if variable is nonempty branch
