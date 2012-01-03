@@ -198,7 +198,7 @@ configure()
   for _path in $(find ${shared_path} -mindepth 1 -maxdepth 1 -type d | sed 's#^.*/##')
   do
     case ${_path} in
-      (config|application)
+      (config|application/config)
         if path exists "${shared_path}/${_path}"
         then
           path enter "${shared_path}/${_path}"
