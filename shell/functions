@@ -196,71 +196,78 @@ configure()
   _prefix="${shared_path%/*}"
   _shared_public_path="${shared_path}/public"
 
-  if ! path exists "${shared_path}/config"
-  then
-    return 0
-  fi
-
-  path enter "${shared_path}/config"
-
-  for _file in "${shared_path}"/config/*
+  for _path in $(find ${shared_path} -mindepth 1 -maxdepth 1 -type d | sed 's#^.*/##')
   do
-    _name="${_file##*/}"
+    case ${_path} in
+      (config)
+        if path exists "${shared_path}/config"
+        then
+          path enter "${shared_path}/config"
 
-    log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )"
+          for _file in "${shared_path}"/config/*
+          do
+            _name="${_file##*/}"
 
-    path remove "$stage_path/config/${_name}"
+            log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )"
 
-    file link symbolic \
-      from "$shared_path/config/${_name}" \
-      to "$stage_path/config/${_name}"
+            path remove "$stage_path/config/${_name}"
 
-    log step success
+            file link symbolic \
+              from "$shared_path/config/${_name}" \
+              to "$stage_path/config/${_name}"
+
+            log step success
+          done
+        fi
+        ;;
+      (db)
+        if path exists "$shared_path/db"
+        then
+          log step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )"
+          path remove "$stage_path/db"
+          file link symbolic from "$shared_path/db" to "$stage_path/db"
+          log step success
+        fi
+        ;;
+      (public)
+        if path exists "$shared_path/public/"
+        then
+          _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
+
+          for _path in "${_paths[@]}"
+          do
+            _path="${_path#${_shared_public_path}/}"
+
+            log step "  link ~ public ${_path} ( ${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path} )"
+
+            path remove "${stage_path}/public/${_path}"
+            file link symbolic \
+              from "${_shared_public_path}/${_path}" \
+              to "${stage_path}/public/${_path}"
+
+            log step success
+          done
+        fi
+        ;;
+      (${project}|discard)
+        continue
+        ;;
+      (*)
+        if path exists "${stage_path}/${_path}"
+        then path remove "${stage_path}/${_path}" ; fi
+
+        log step "  link ~ ${_path} ( ${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path} )"
+
+        path remove "${stage_path}/${_path}"
+        file link symbolic \
+          from "${shared_path}/${_path}" \
+          to "${stage_path}/${_path}"
+
+        log step success
+        ;;
+    esac
   done
 
-  if path exists "$shared_path/db"
-  then
-    log step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )"
-    path remove "$stage_path/db"
-    file link symbolic from "$shared_path/db" to "$stage_path/db"
-    log step success
-  fi
-
-  for _path in tmp log pids #files
-  do
-    if path exists "${stage_path}/${_path}"
-    then
-      path remove "${stage_path}/${_path}"
-    fi
-    log step "  link ~ ${_path} ( ${shared_path##${project_path}/}/${_path} => ${stage_path##${project_path}/}/${_path} )"
-
-    path remove "${stage_path}/${_path}"
-    file link symbolic \
-      from "${shared_path}/${_path}" \
-      to "${stage_path}/${_path}"
-    log step success
-  done
-
-  if ! path exists "$shared_path/public/"
-  then
-    log error "\nPlease run the folloing command first and then retry:\n\tsm rails setup"
-  fi
-
-  _paths=($( find "${shared_path}/public" -mindepth 1 -maxdepth 1 -type d ))
-
-  for _path in "${_paths[@]}"
-  do
-    _path="${_path#${_shared_public_path}/}"
-
-    log step "  link ~ public ${_path} ( ${shared_path##${project_path}/}/public/${_path} => ${stage_path##${project_path}/}/public/${_path} )"
-
-    path remove "${stage_path}/public/${_path}"
-    file link symbolic \
-      from "${_shared_public_path}/${_path}" \
-      to "${stage_path}/public/${_path}"
-
-    log step success
-  done
 }
 
 record()
@@ -270,24 +277,16 @@ record()
   paths exist "${release_path}" || return 0 # Release failed, nothing to do...
 
   if variable is nonempty revision
-  then
-    file write string "${revision}" to "${release_path}/revision"
-  fi
+  then file write string "${revision}" to "${release_path}/revision" ; fi
 
   if variable is nonempty branch
-  then
-    file write string "${branch}" to "${release_path}/branch"
-  fi
+  then file write string "${branch}" to "${release_path}/branch" ; fi
 
   if variable is nonempty repository_url # TODO: get this from the .uri file.
-  then
-    file write string "$repository_url" to "${release_path}/repository_url"
-  fi
+  then file write string "$repository_url" to "${release_path}/repository_url" ; fi
 
   if variable is nonempty deploy_timestamp
-  then
-    files write string "${deploy_timestamp}" to "${release_path}/timestamp"
-  fi
+  then files write string "${deploy_timestamp}" to "${release_path}/timestamp" ; fi
 }
 
 remove_releases()
