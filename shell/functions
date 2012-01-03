@@ -198,22 +198,22 @@ configure()
   for _path in $(find ${shared_path} -mindepth 1 -maxdepth 1 -type d | sed 's#^.*/##')
   do
     case ${_path} in
-      (config)
-        if path exists "${shared_path}/config"
+      (config|application)
+        if path exists "${shared_path}/${_path}"
         then
-          path enter "${shared_path}/config"
+          path enter "${shared_path}/${_path}"
 
-          for _file in "${shared_path}"/config/*
+          for _file in "${shared_path}"/${_path}/*
           do
             _name="${_file##*/}"
 
-            log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/config/${_name} => $stage_path/config/${_name} )"
+            log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/${_path}/${_name} => $stage_path/${_path}/${_name} )"
 
-            path remove "$stage_path/config/${_name}"
+            path remove "$stage_path/${_path}/${_name}"
 
             file link symbolic \
-              from "$shared_path/config/${_name}" \
-              to "$stage_path/config/${_name}"
+              from "$shared_path/${_path}/${_name}" \
+              to "$stage_path/${_path}/${_name}"
 
             log step success
           done
