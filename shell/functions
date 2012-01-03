@@ -248,7 +248,7 @@ configure()
           done
         fi
         ;;
-      (${project}|discard)
+      (${project}|discard|application)
         continue
         ;;
       (*)
