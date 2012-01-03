@@ -190,15 +190,20 @@ configure()
 {
   trace_filter "deploy" || set -o xtrace
 
-  local _name _file _path _paths _prefix _shared_public_path
+  local _name _file _full_path _path _paths _prefix _shared_public_path
 
   _prefix="${shared_path%/*}"
   _shared_public_path="${shared_path}/public"
 
-  for _path in $(find ${shared_path} -mindepth 1 -maxdepth 1 -type d | sed 's#^.*/##')
+  for _full_path in $( find ${shared_path} -mindepth 1 -maxdepth 1 -type d )
   do
+    _path="${_full_path#${shared_path}/}"
+
     case ${_path} in
-      (config|application/config)
+      (${project}|discard|application) # Application and accounting paths.
+        continue
+        ;;
+      (config|application/config) # Configuration paths.
         if path exists "${shared_path}/${_path}"
         then
           path enter "${shared_path}/${_path}"
@@ -219,7 +224,7 @@ configure()
           done
         fi
         ;;
-      (db)
+      (db) # Database path.
         if path exists "$shared_path/db"
         then
           log step "  link ~ db path ( ${shared_path##${project_path}/}/db => ${stage_path##${project_path}/}/db )"
@@ -248,10 +253,7 @@ configure()
           done
         fi
         ;;
-      (${project}|discard|application)
-        continue
-        ;;
-      (*)
+      (*) # All other paths
         if path exists "${stage_path}/${_path}"
         then path remove "${stage_path}/${_path}" ; fi
 
