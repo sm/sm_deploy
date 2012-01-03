@@ -203,7 +203,7 @@ configure()
         then
           path enter "${shared_path}/${_path}"
 
-          for _file in "${shared_path}"/${_path}/*
+          for _file in "${shared_path}"/${_path}/**/*
           do
             _name="${_file##*/}"
 
@@ -266,7 +266,6 @@ configure()
         ;;
     esac
   done
-
 }
 
 record()
@@ -282,7 +281,7 @@ record()
   then file write string "${branch}" to "${release_path}/branch" ; fi
 
   if variable is nonempty repository_url # TODO: get this from the .uri file.
-  then file write string "$repository_url" to "${release_path}/repository_url" ; fi
+  then file write string "${repository_url}" to "${release_path}/repository_url" ; fi
 
   if variable is nonempty deploy_timestamp
   then files write string "${deploy_timestamp}" to "${release_path}/timestamp" ; fi
