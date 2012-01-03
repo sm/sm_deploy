@@ -205,7 +205,7 @@ configure()
 
           for _file in "${shared_path}"/${_path}/**/*
           do
-            _name="${_file##*/}"
+            _name="${_file#${shared_path}/${_path}/}"
 
             log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/${_path}/${_name} => $stage_path/${_path}/${_name} )"
 
