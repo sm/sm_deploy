@@ -200,10 +200,13 @@ configure()
     _path="${_full_path#${shared_path}/}"
 
     case ${_path} in
-      (${project}|discard|application) # Application and accounting paths.
+      (${project}|discard) # Application and accounting paths.
         continue
         ;;
-      (config|application/config) # Configuration paths.
+      (config|application) # Configuration paths.
+        if [[ "${_path}" == "application" ]]
+        then _path="application/config"; fi
+
         if path exists "${shared_path}/${_path}"
         then
           path enter "${shared_path}/${_path}"
