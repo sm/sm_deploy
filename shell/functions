@@ -200,7 +200,7 @@ configure()
     _path="${_full_path#${shared_path}/}"
 
     case ${_path} in
-      (${project}|discard) # Application and accounting paths.
+      (${project}|discard|app) # Application and accounting paths.
         continue
         ;;
       (config|application) # Configuration paths.
