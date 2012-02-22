@@ -215,7 +215,7 @@ configure()
           do
             _name="${_file#${shared_path}/${_path}/}"
 
-            log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/${_path}/${_name} => $stage_path/${_path}/${_name} )"
+            log step "  link ~ ${_name} ( ${shared_path##${project_path}/}/${_path}/${_name} => ${shared_path##${project_path}/}/${_path}/${_name} )"
 
             path remove "$stage_path/${_path}/${_name}"
 
