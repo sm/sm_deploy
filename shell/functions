@@ -211,7 +211,7 @@ configure()
         then
           path enter "${shared_path}/${_path}"
 
-          for _file in "${shared_path}"/${_path}/**/*
+          for _file in "${shared_path}"/${_path}/*
           do
             _name="${_file#${shared_path}/${_path}/}"
 
