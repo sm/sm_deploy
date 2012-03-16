@@ -55,7 +55,7 @@ hook()
 hook_source()
 {
   trace_filter "deploy" || set -o xtrace
-  ( set -v ; source "$1" )
+  ( source "$1" )
 }
 
 before_step()
