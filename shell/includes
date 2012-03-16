@@ -4,3 +4,4 @@ api/time
 api/vcs
 api/filesystem
 api/steps
+api/variables
